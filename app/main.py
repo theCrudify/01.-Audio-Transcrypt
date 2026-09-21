@@ -51,17 +51,10 @@ async def _save_upload(file: UploadFile) -> Path:
 
     temp_name = f"{uuid.uuid4().hex}{extension}"
     target_path = TEMP_DIR / temp_name
-    bytes_written = 0
 
     try:
         with target_path.open("wb") as buffer:
             while chunk := await file.read(1024 * 1024):
-                bytes_written += len(chunk)
-                if bytes_written > MAX_UPLOAD_BYTES:
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"Ukuran file melebihi batas {MAX_UPLOAD_MB} MB.",
-                    )
                 buffer.write(chunk)
     except Exception:
         if target_path.exists():
@@ -79,6 +72,11 @@ async def http_exception_handler(_, exc: HTTPException):
         status_code=exc.status_code,
         content={"status": "error", "message": exc.detail},
     )
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(STATIC_DIR / "favicon.svg", media_type="image/svg+xml")
 
 
 @app.get("/health")
@@ -231,4 +229,4 @@ if __name__ == "__main__":
         raise SystemExit(1) from exc
 
     print(f"Starting app on http://127.0.0.1:{port}")
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    uvicorn.run("app.main:app", host="127.0.0.1", port=port, reload=True)

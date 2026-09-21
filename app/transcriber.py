@@ -1,11 +1,11 @@
 import json
 import os
 import subprocess
-import tempfile
 from pathlib import Path
+from uuid import uuid4
 
 from app.audio import convert_to_wav
-from app.config import CLI_PATH, GPU_DEVICE, MODEL_PATH
+from app.config import CLI_PATH, GPU_DEVICE, MODEL_PATH, TEMP_DIR
 from app.diarization import diarization_error, load_diarization_pipeline, speaker_for_segment
 
 backend_error = None
@@ -36,28 +36,32 @@ def run_transcription(
     if not backend_ready():
         raise RuntimeError(backend_error or "Backend Vulkan belum tersedia.")
 
-    with tempfile.TemporaryDirectory(prefix="whisper-") as work_dir:
-        work_path = Path(work_dir)
-        wav_path = work_path / "input.wav"
-        output_prefix = work_path / "result"
-
+    temp_id = uuid4().hex
+    wav_path = TEMP_DIR / f"whisper-input-{temp_id}.wav"
+    output_prefix = TEMP_DIR / f"whisper-result-{temp_id}"
+    json_path = output_prefix.with_suffix(".json")
+    try:
         convert_to_wav(audio_path, wav_path)
 
-        command = [
+        if not wav_path.is_file() or wav_path.stat().st_size < 100:
+            raise RuntimeError("Gagal menghasilkan file audio WAV yang valid untuk diproses.")
+
+        base_command = [
             str(CLI_PATH),
             "-m", str(MODEL_PATH),
             "-f", str(wav_path),
             "-oj",
             "-of", str(output_prefix),
-            "-dev", str(GPU_DEVICE),
-            "-t", str(max(1, os.cpu_count() or 4)),
+            "-t", str(max(1, min(8, os.cpu_count() or 4))),
             "-bs", str(beam_size),
             "-l", language_code or "auto",
             "-np",
         ]
         if task == "translate":
-            command.append("-tr")
+            base_command.append("-tr")
 
+        # Coba jalankan dengan GPU yang dikonfigurasi (GPU 1: RX 6550M)
+        command = base_command + ["-dev", str(GPU_DEVICE)]
         completed = subprocess.run(
             command,
             capture_output=True,
@@ -68,9 +72,21 @@ def run_transcription(
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
         )
 
-        json_path = output_prefix.with_suffix(".json")
+        # Jika gagal pada GPU tertentu, coba fallback ke GPU 0 atau mode GPU otomatis
+        if completed.returncode != 0 and GPU_DEVICE != 0:
+            command_fallback = base_command + ["-dev", "0"]
+            completed = subprocess.run(
+                command_fallback,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=int(os.getenv("WHISPER_TIMEOUT_SECONDS", "3600")),
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            )
+
         if completed.returncode != 0 or not json_path.is_file():
-            details = (completed.stderr or completed.stdout).strip()[-1200:]
+            details = (completed.stderr or completed.stdout or "").strip()[-1200:]
             raise RuntimeError(f"whisper.cpp gagal (exit {completed.returncode}): {details}")
 
         payload = json.loads(json_path.read_text(encoding="utf-8"))
@@ -81,6 +97,9 @@ def run_transcription(
             if pipeline is None:
                 raise RuntimeError(diarization_error or "Diarization tidak tersedia.")
             diarization = pipeline(str(wav_path))
+    finally:
+        for temp_file in [wav_path, *TEMP_DIR.glob(f"whisper-result-{temp_id}.*")]:
+            temp_file.unlink(missing_ok=True)
 
     transcript_segments = []
     speaker_labels = {}
