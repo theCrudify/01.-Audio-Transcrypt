@@ -24,15 +24,15 @@ requirements/                  Daftar dependensi Python
   ├── base.txt                 Dependensi utama
   └── diarization.txt          Dependensi opsional speaker diarization
 scripts/                       Script launcher aplikasi
-  ├── start_app.bat            Launcher Windows
+  ├── start_app.bat            Launcher Windows (bisa diklik langsung dari folder scripts/)
   └── start_app.sh             Launcher Bash
-static/index.html              Tampilan web frontend
-start_app.bat                  Shortcut runner Windows
-start_app.sh                   Shortcut runner Bash
-requirements.txt               Shortcut requirements utama
+static/                        Tampilan web frontend
+  └── index.html
 build-vulkan/bin/Release/      whisper.cpp Vulkan
 models/ggml-small.bin          Model Whisper
 uploads/                       File sementara saat diproses
+README.md                      Dokumentasi proyek
+.gitignore                     Daftar abaikan git
 ```
 
 Folder `build-vulkan/`, `models/`, `third_party/`, `uploads/`, cache Python, dan file log tidak perlu diubah atau dimasukkan ke repository.
@@ -54,7 +54,7 @@ Klik address bar, ketik `cmd`, lalu tekan Enter.
 Jalankan sekali:
 
 ```bat
-python -m pip install -r requirements.txt
+python -m pip install -r requirements/base.txt
 ```
 
 Jika `python` tidak dikenali, gunakan Anaconda Prompt atau aktifkan environment Python yang biasa dipakai.
@@ -73,21 +73,20 @@ Ready to run with AMD Vulkan GPU.
 
 ### 4. Jalankan aplikasi
 
-Cara yang disarankan:
+Cara yang disarankan (melalui script launcher):
 
 ```bat
-start_app.bat
+scripts\start_app.bat
 ```
+*(atau langsung buka folder `scripts/` dan double-click `start_app.bat`)*
 
-Jika menggunakan Git Bash, jalankan salah satu perintah berikut:
+Jika menggunakan Git Bash:
 
 ```bash
-bash start_app.sh
-# atau panggil launcher Windows melalui CMD:
-cmd.exe /c start_app.bat
+bash scripts/start_app.sh
 ```
 
-Atau langsung via modul Python:
+Atau langsung via Python:
 
 ```bat
 python -m app.main
