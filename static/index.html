@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local AI Transcription Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-zinc-950 text-zinc-100">
+    <main class="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <section class="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <div class="rounded-lg border border-zinc-800 bg-zinc-900 p-6 shadow-2xl shadow-black/30">
+          <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p class="text-sm font-medium uppercase tracking-[0.2em] text-teal-300">Local-first AI</p>
+              <h1 class="mt-2 text-3xl font-bold text-white sm:text-4xl">Transcription Studio</h1>
+              <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+                Ubah audio atau video menjadi transkrip bertimestamp langsung di mesin lokal.
+              </p>
+            </div>
+            <div id="serverBadge" class="w-fit rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-400">
+              Mengecek server...
+            </div>
+          </div>
+
+          <div
+            id="dropZone"
+            class="flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-700 bg-zinc-950/70 p-6 text-center transition hover:border-teal-400"
+          >
+            <input id="audioFile" class="hidden" type="file" accept="audio/*,video/*" />
+            <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-teal-400 text-2xl text-zinc-950">
+              +
+            </div>
+            <p class="text-base font-semibold text-zinc-100">Pilih atau seret file audio/video</p>
+            <p class="mt-2 text-sm text-zinc-500">MP3, WAV, M4A, MP4, WEBM, FLAC, OGG, MOV, MKV</p>
+            <p id="fileName" class="mt-4 max-w-full truncate text-sm font-medium text-teal-300"></p>
+          </div>
+
+          <div class="mt-5 grid gap-3 sm:grid-cols-5">
+            <label class="block">
+              <span class="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">Bahasa</span>
+              <select id="language" class="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100">
+                <option value="id">Indonesia</option>
+                <option value="auto">Deteksi otomatis</option>
+                <option value="en">English</option>
+                <option value="ms">Melayu</option>
+                <option value="jv">Jawa</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">Mode</span>
+              <select id="task" class="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100">
+                <option value="transcribe">Transkrip</option>
+                <option value="translate">Terjemah ke Inggris</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">Akurasi</span>
+              <input id="beamSize" type="number" min="1" max="10" value="1" class="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100" />
+            </label>
+            <label class="flex items-end gap-3 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
+              <input id="vadFilter" type="checkbox" checked class="h-4 w-4 accent-teal-400" />
+              <span class="pb-0.5 text-sm text-zinc-300">Filter hening</span>
+            </label>
+            <label class="flex items-end gap-3 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2">
+              <input id="diarize" type="checkbox" class="h-4 w-4 accent-teal-400" />
+              <span id="diarizeHint" class="pb-0.5 text-sm text-zinc-300">Bedakan pembicara</span>
+            </label>
+          </div>
+
+          <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+            <button id="processBtn" class="rounded-md bg-teal-400 px-5 py-3 font-semibold text-zinc-950 transition hover:bg-teal-300 disabled:cursor-not-allowed disabled:opacity-50">
+              Mulai Transkripsi
+            </button>
+            <button id="extractBtn" class="rounded-md border border-teal-400/50 px-5 py-3 font-semibold text-teal-200 transition hover:bg-teal-400/10 disabled:cursor-not-allowed disabled:opacity-50">
+              Pisahkan Audio dari Video
+            </button>
+            <button id="clearBtn" class="rounded-md border border-zinc-700 px-5 py-3 font-semibold text-zinc-200 transition hover:bg-zinc-800">
+              Bersihkan
+            </button>
+          </div>
+        </div>
+
+        <aside class="rounded-lg border border-zinc-800 bg-zinc-900 p-5">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-500">Ringkasan</h2>
+          <dl class="mt-5 space-y-4 text-sm">
+            <div class="flex justify-between gap-4">
+              <dt class="text-zinc-500">Durasi</dt>
+              <dd id="durationStat" class="font-medium text-zinc-100">-</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-zinc-500">Bahasa</dt>
+              <dd id="languageStat" class="font-medium text-zinc-100">-</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-zinc-500">Segmen</dt>
+              <dd id="segmentStat" class="font-medium text-zinc-100">-</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-zinc-500">Kata</dt>
+              <dd id="wordStat" class="font-medium text-zinc-100">-</dd>
+            </div>
+          </dl>
+          <div id="loading" class="mt-6 hidden rounded-md border border-teal-400/30 bg-teal-400/10 p-4 text-sm text-teal-100">
+            <div class="mb-3 flex items-center justify-between gap-4">
+              <span id="progressLabel">Menyiapkan file...</span>
+              <span id="progressPercent" class="font-mono font-semibold text-teal-200">0%</span>
+            </div>
+            <div class="h-2 overflow-hidden rounded-full bg-zinc-800" role="progressbar" aria-label="Kemajuan transkripsi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div id="progressBar" class="h-full w-0 rounded-full bg-teal-400 transition-all duration-500"></div>
+            </div>
+            <p class="mt-3 text-xs text-teal-100/70">Proses berjalan lokal. Persentase adalah estimasi sampai server mengembalikan hasil.</p>
+          </div>
+          <div id="errorBox" class="mt-6 hidden rounded-md border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-100"></div>
+        </aside>
+      </section>
+
+      <section id="resultContainer" class="hidden rounded-lg border border-zinc-800 bg-zinc-900">
+        <div class="flex flex-col gap-3 border-b border-zinc-800 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 class="text-lg font-semibold text-white">Hasil Transkrip</h2>
+          <div class="flex gap-2">
+            <button id="copyBtn" class="rounded-md border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800">Copy</button>
+            <button id="downloadBtn" class="rounded-md border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800">Download TXT</button>
+          </div>
+        </div>
+        <div id="transcriptOutput" class="max-h-[520px] overflow-y-auto p-4 text-sm"></div>
+      </section>
+    </main>
+
+    <script>
+      const state = { result: null };
+      const el = (id) => document.getElementById(id);
+      const fileInput = el('audioFile');
+      const dropZone = el('dropZone');
+      const processBtn = el('processBtn');
+      const extractBtn = el('extractBtn');
+      const resultContainer = el('resultContainer');
+      const output = el('transcriptOutput');
+      const errorBox = el('errorBox');
+      const loading = el('loading');
+      const progressBar = el('progressBar');
+      const progressPercent = el('progressPercent');
+      const progressLabel = el('progressLabel');
+      let progressTimer = null;
+
+      function formatTime(seconds) {
+        const safeSeconds = Number.isFinite(seconds) ? seconds : 0;
+        const hours = Math.floor(safeSeconds / 3600);
+        const minutes = Math.floor((safeSeconds % 3600) / 60);
+        const secs = Math.floor(safeSeconds % 60);
+        return hours > 0
+          ? `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+          : `${minutes}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function setBusy(isBusy) {
+        processBtn.disabled = isBusy;
+        loading.classList.toggle('hidden', !isBusy);
+        processBtn.textContent = isBusy ? 'Memproses...' : 'Mulai Transkripsi';
+        if (!isBusy) {
+          clearInterval(progressTimer);
+        }
+      }
+
+      function setProgress(value, label) {
+        const safeValue = Math.max(0, Math.min(100, Math.round(value)));
+        progressBar.style.width = `${safeValue}%`;
+        progressPercent.textContent = `${safeValue}%`;
+        progressLabel.textContent = label;
+        progressBar.parentElement.setAttribute('aria-valuenow', String(safeValue));
+      }
+
+      function startProgress() {
+        clearInterval(progressTimer);
+        const stages = [
+          [42, 'File diterima, menyiapkan audio...'],
+          [58, 'Menganalisis suara dengan GPU...'],
+          [68, 'Menjalankan transkripsi lokal...'],
+          [88, 'Merapikan timestamp dan hasil...'],
+        ];
+        let stageIndex = 0;
+        setProgress(stages[0][0], stages[0][1]);
+        progressTimer = setInterval(() => {
+          if (stageIndex < stages.length - 1) {
+            stageIndex += 1;
+            setProgress(stages[stageIndex][0], stages[stageIndex][1]);
+          }
+        }, 1200);
+      }
+
+      function transcribeRequest(formData, file) {
+        return new Promise((resolve, reject) => {
+          const request = new XMLHttpRequest();
+          request.open('POST', '/api/transcribe');
+          request.responseType = 'json';
+          request.upload.addEventListener('progress', (event) => {
+            if (!event.lengthComputable) return;
+            const percent = Math.round((event.loaded / event.total) * 40);
+            setProgress(percent, `Mengunggah file... ${percent}%`);
+          });
+          request.addEventListener('readystatechange', () => {
+            if (request.readyState === 2) {
+              setProgress(42, 'File diterima, memproses dengan GPU...');
+              startProgress();
+            }
+          });
+          request.addEventListener('load', () => {
+            const data = request.response || {};
+            if (request.status >= 200 && request.status < 300) {
+              resolve({ response: request, data });
+            } else {
+              reject(new Error(`[${request.status}] ${data.message || 'Transkripsi gagal.'}`));
+            }
+          });
+          request.addEventListener('error', () => reject(new Error('Gagal terhubung ke server lokal.')));
+          request.addEventListener('abort', () => reject(new Error('Upload dibatalkan.')));
+          request.send(formData);
+        });
+      }
+
+      function showError(message) {
+        errorBox.textContent = message;
+        errorBox.classList.remove('hidden');
+      }
+
+      function clearError() {
+        errorBox.textContent = '';
+        errorBox.classList.add('hidden');
+      }
+
+      function resetStats() {
+        ['durationStat', 'languageStat', 'segmentStat', 'wordStat'].forEach((id) => {
+          el(id).textContent = '-';
+        });
+      }
+
+      function updateFileName() {
+        const file = fileInput.files[0];
+        el('fileName').textContent = file ? `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)` : '';
+      }
+
+      function renderResult(data) {
+        state.result = data;
+        resultContainer.classList.remove('hidden');
+        output.innerHTML = '';
+
+        const words = data.text ? data.text.split(/\s+/).filter(Boolean).length : 0;
+        el('durationStat').textContent = formatTime(data.duration);
+        el('languageStat').textContent = `${data.language || '-'} (${Math.round((data.language_probability || 0) * 100)}%)`;
+        el('segmentStat').textContent = String(data.segments?.length || 0);
+        el('wordStat').textContent = String(words);
+
+        if (!data.segments || data.segments.length === 0) {
+          output.innerHTML = '<p class="text-zinc-400">Tidak ada teks yang terdeteksi.</p>';
+          return;
+        }
+
+        data.segments.forEach((segment) => {
+          const row = document.createElement('div');
+          row.className = 'grid gap-2 border-b border-zinc-800 py-3 sm:grid-cols-[92px_1fr]';
+          const speaker = segment.speaker ? `<span class="mr-2 rounded bg-teal-400/10 px-2 py-1 text-xs font-semibold text-teal-200">${segment.speaker}</span>` : '';
+          row.innerHTML = `
+            <span class="font-mono text-xs text-teal-300">[${formatTime(segment.start)}]</span>
+            <p class="leading-6 text-zinc-200">${speaker}</p>
+          `;
+          row.querySelector('p').append(document.createTextNode(segment.text));
+          output.appendChild(row);
+        });
+      }
+
+      async function checkHealth() {
+        try {
+          const response = await fetch('/health');
+          const data = await response.json();
+          const badge = el('serverBadge');
+          const diarizeControl = el('diarize');
+          const diarizeHint = el('diarizeHint');
+          diarizeControl.disabled = !data.diarization_available;
+          diarizeHint.textContent = data.diarization_available
+            ? 'Bedakan pembicara'
+            : 'Speaker perlu setup tambahan';
+          badge.textContent = data.model_loaded
+            ? `Siap: ${data.model} / ${data.device}`
+            : 'Menyiapkan model...';
+          badge.className = data.model_loaded
+            ? 'w-fit rounded-full border border-teal-400/40 bg-teal-400/10 px-3 py-1 text-xs text-teal-200'
+            : 'w-fit rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-xs text-amber-200';
+          if (!data.model_loaded) {
+            const warmup = await fetch('/api/warmup', { method: 'POST' });
+            const warmupData = await warmup.json();
+            if (!warmup.ok) throw new Error(warmupData.message || 'Model gagal dimuat.');
+            badge.textContent = `Siap: ${warmupData.model} / ${warmupData.device}`;
+            badge.className = 'w-fit rounded-full border border-teal-400/40 bg-teal-400/10 px-3 py-1 text-xs text-teal-200';
+          }
+        } catch (error) {
+          el('serverBadge').textContent = 'Model gagal dimuat';
+          showError(error.message || 'Model Whisper gagal dimuat. Tutup server lama, jalankan start_app.bat, lalu lihat pesan error di terminal.');
+        }
+      }
+
+      async function uploadAndTranscribe() {
+        const file = fileInput.files[0];
+        clearError();
+        if (!file) {
+          showError('Pilih file audio atau video terlebih dahulu.');
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('language', el('language').value);
+        formData.append('task', el('task').value);
+        formData.append('beam_size', el('beamSize').value);
+        formData.append('vad_filter', el('vadFilter').checked ? 'true' : 'false');
+        formData.append('diarize', el('diarize').checked ? 'true' : 'false');
+
+        setBusy(true);
+        setProgress(0, 'Menyiapkan upload...');
+        resultContainer.classList.add('hidden');
+        resetStats();
+
+        try {
+          const { data } = await transcribeRequest(formData, file);
+          if (data.status !== 'success') throw new Error(data.message || 'Transkripsi gagal.');
+          setProgress(100, 'Selesai');
+          renderResult(data);
+        } catch (error) {
+          showError(error.message || 'Gagal terhubung ke server lokal.');
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function extractAudioOnly() {
+        const file = fileInput.files[0];
+        clearError();
+        if (!file) {
+          showError('Pilih file video atau audio terlebih dahulu.');
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        extractBtn.disabled = true;
+        processBtn.disabled = true;
+        const originalLabel = extractBtn.textContent;
+        extractBtn.textContent = 'Memisahkan audio...';
+
+        try {
+          const response = await fetch('/api/extract-audio', { method: 'POST', body: formData });
+          if (!response.ok) {
+            let message = 'Ekstraksi audio gagal.';
+            try {
+              const data = await response.json();
+              message = data.message || message;
+            } catch (_) {
+              // response body was not JSON, keep default message
+            }
+            throw new Error(message);
+          }
+
+          const blob = await response.blob();
+          const disposition = response.headers.get('Content-Disposition') || '';
+          const match = disposition.match(/filename="?([^";]+)"?/);
+          const audioName = match ? match[1] : `${file.name.replace(/\.[^.]+$/, '')}-audio.wav`;
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = audioName;
+          link.click();
+          URL.revokeObjectURL(url);
+
+          const audioFile = new File([blob], audioName, { type: blob.type || 'audio/wav' });
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(audioFile);
+          fileInput.files = dataTransfer.files;
+          updateFileName();
+          el('fileName').textContent += ' — audio hasil ekstraksi, siap ditranskrip';
+        } catch (error) {
+          showError(error.message || 'Gagal memisahkan audio dari video.');
+        } finally {
+          extractBtn.disabled = false;
+          processBtn.disabled = false;
+          extractBtn.textContent = originalLabel;
+        }
+      }
+
+      function resultAsText() {
+        if (!state.result?.segments) return '';
+        return state.result.segments
+          .map((segment) => `[${formatTime(segment.start)}] ${segment.speaker ? `${segment.speaker}: ` : ''}${segment.text}`)
+          .join('\n');
+      }
+
+      fileInput.addEventListener('change', updateFileName);
+      dropZone.addEventListener('click', () => fileInput.click());
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          dropZone.classList.add('border-teal-400');
+        });
+      });
+      ['dragleave', 'drop'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          dropZone.classList.remove('border-teal-400');
+        });
+      });
+      dropZone.addEventListener('drop', (event) => {
+        if (event.dataTransfer.files.length > 0) {
+          fileInput.files = event.dataTransfer.files;
+          updateFileName();
+        }
+      });
+      processBtn.addEventListener('click', uploadAndTranscribe);
+      extractBtn.addEventListener('click', extractAudioOnly);
+      el('clearBtn').addEventListener('click', () => {
+        fileInput.value = '';
+        state.result = null;
+        updateFileName();
+        resetStats();
+        clearError();
+        resultContainer.classList.add('hidden');
+      });
+      el('copyBtn').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(resultAsText());
+      });
+      el('downloadBtn').addEventListener('click', () => {
+        const blob = new Blob([resultAsText()], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `transkrip-${new Date().toISOString().slice(0, 10)}.txt`;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+
+      checkHealth();
+    </script>
+  </body>
+</html>

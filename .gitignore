@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+uploads/
+models/
+build-vulkan/
+third_party/
+*.log
+logs/
+.env
+.DS_Store
