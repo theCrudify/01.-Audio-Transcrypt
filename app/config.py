@@ -32,6 +32,8 @@ GPU_DEVICE = int(os.getenv("WHISPER_GPU_DEVICE", "1"))
 DEVICE = "vulkan"
 COMPUTE_TYPE = "gpu"
 
+HOST = os.getenv("HOST", "127.0.0.1")
+
 # File Upload Limits
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "512"))
 MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024

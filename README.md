@@ -115,6 +115,29 @@ bash scripts/start_app.sh
 
 Path binary dipilih otomatis sesuai OS (bisa ditimpa dengan `WHISPER_CLI`). Urutan GPU di Linux bisa berbeda dari Windows; jika GPU yang dipakai salah, set `WHISPER_GPU_DEVICE=0`.
 
+## Paket siap pakai (tanpa install apa pun)
+
+Buat paket portable (Python, dependensi, whisper.cpp, dan model sudah termasuk) dari Linux:
+
+```bash
+bash scripts/package.sh          # atau: linux | windows
+```
+
+Hasilnya di `dist/`:
+
+- `AudioTranscrypt-windows.zip`: ekstrak, lalu double-click `start.bat`.
+- `AudioTranscrypt-linux.tar.gz`: ekstrak, lalu jalankan `./start.sh` (butuh Ubuntu 24.04+ / glibc 2.38+ dan driver Vulkan Mesa, umumnya sudah ada).
+
+Jika GPU Vulkan tidak tersedia, transkripsi otomatis jalan di CPU (lebih lambat).
+
+## Mode server (akses dari komputer lain)
+
+```bash
+HOST=0.0.0.0 APP_RELOAD=0 bash scripts/start_app.sh      # atau ./start.sh di paket portable
+```
+
+Windows: `set HOST=0.0.0.0` sebelum `start.bat`. Pengguna lain cukup buka `http://<IP-server>:8000`. Transkripsi diproses bergantian (satu per satu di GPU); tidak ada login, jadi jalankan hanya di jaringan tepercaya.
+
 ## Verifikasi GPU
 
 Buka:

@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import threading
 from pathlib import Path
 from uuid import uuid4
 
@@ -9,6 +10,8 @@ from app.config import CLI_PATH, GPU_DEVICE, MODEL_PATH, TEMP_DIR, VAD_MODEL_PAT
 from app.diarization import diarization_error, load_diarization_pipeline, speaker_for_segment
 
 backend_error = None
+# GPU 4 GB hanya muat satu proses whisper; request lain menunggu giliran.
+gpu_lock = threading.Lock()
 
 
 def backend_ready() -> bool:
@@ -65,22 +68,10 @@ def run_transcription(
             base_command += ["--vad", "-vm", str(VAD_MODEL_PATH), "-vsd", "500"]
 
         # Coba jalankan dengan GPU yang dikonfigurasi (GPU 1: RX 6550M)
-        command = base_command + ["-dev", str(GPU_DEVICE)]
-        completed = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=int(os.getenv("WHISPER_TIMEOUT_SECONDS", "3600")),
-            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-        )
-
-        # Jika gagal pada GPU tertentu, coba fallback ke GPU 0 atau mode GPU otomatis
-        if completed.returncode != 0 and GPU_DEVICE != 0:
-            command_fallback = base_command + ["-dev", "0"]
+        with gpu_lock:
+            command = base_command + ["-dev", str(GPU_DEVICE)]
             completed = subprocess.run(
-                command_fallback,
+                command,
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -88,6 +79,21 @@ def run_transcription(
                 timeout=int(os.getenv("WHISPER_TIMEOUT_SECONDS", "3600")),
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
+
+            # Jika gagal pada GPU tertentu, coba GPU 0, lalu CPU (laptop/server tanpa GPU Vulkan)
+            fallbacks = [["-dev", "0"]] if GPU_DEVICE != 0 else []
+            for fallback_args in fallbacks + [["-ng"]]:
+                if completed.returncode == 0:
+                    break
+                completed = subprocess.run(
+                    base_command + fallback_args,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=int(os.getenv("WHISPER_TIMEOUT_SECONDS", "3600")),
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                )
 
         if completed.returncode != 0 or not json_path.is_file():
             details = (completed.stderr or completed.stdout or "").strip()[-1200:]

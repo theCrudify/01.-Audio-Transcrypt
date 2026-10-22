@@ -12,6 +12,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.audio import extract_audio_track
 from app.config import (
+    HOST,
     ALLOWED_EXTENSIONS,
     APP_NAME,
     COMPUTE_TYPE,
@@ -209,7 +210,7 @@ def pick_free_port(start_port: int = 8000, max_attempts: int = 20) -> int:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
-                sock.bind(("127.0.0.1", port))
+                sock.bind((HOST, port))
                 return port
             except OSError:
                 continue
@@ -228,5 +229,6 @@ if __name__ == "__main__":
         print(exc)
         raise SystemExit(1) from exc
 
-    print(f"Starting app on http://127.0.0.1:{port}")
-    uvicorn.run("app.main:app", host="127.0.0.1", port=port, reload=True)
+    print(f"Starting app on http://{HOST}:{port}")
+    # HOST=0.0.0.0 agar bisa diakses dari jaringan; APP_RELOAD=0 untuk server/paket portable.
+    uvicorn.run("app.main:app", host=HOST, port=port, reload=os.getenv("APP_RELOAD", "1") == "1")
