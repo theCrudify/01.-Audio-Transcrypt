@@ -9,3 +9,4 @@ third_party/
 logs/
 .env
 .DS_Store
+build-linux/

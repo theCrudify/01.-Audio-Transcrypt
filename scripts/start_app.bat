@@ -16,7 +16,7 @@ python -m app.verify
 if errorlevel 1 (
     echo.
     echo Setup failed. Install dependencies first:
-    echo     python -m pip install -r requirements.txt
+    echo     python -m pip install -r requirements\base.txt
     pause
     exit /b 1
 )

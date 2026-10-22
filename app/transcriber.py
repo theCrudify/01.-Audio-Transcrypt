@@ -108,8 +108,8 @@ def run_transcription(
         offsets = segment.get("offsets", {})
         if text:
             item = {
-                "start": round(offsets.get("from", 0) / 100, 2),
-                "end": round(offsets.get("to", 0) / 100, 2),
+                "start": round(offsets.get("from", 0) / 1000, 2),
+                "end": round(offsets.get("to", 0) / 1000, 2),
                 "text": text,
             }
             if diarization is not None:

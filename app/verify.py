@@ -3,6 +3,8 @@ import os
 import sys
 from pathlib import Path
 
+from app.config import CLI_PATH, MODEL_PATH
+
 def run_verification() -> bool:
     root = Path(__file__).resolve().parent.parent
     print("Project directory:", root)
@@ -20,18 +22,20 @@ def run_verification() -> bool:
 
     if missing:
         print("\nDependency check failed. Install dependencies with:")
-        print("python -m pip install -r requirements.txt")
+        print(f"{sys.executable} -m pip install -r requirements/base.txt")
         return False
 
     checks = {
-        "whisper-cli Vulkan": root / "build-vulkan" / "bin" / "Release" / "whisper-cli.exe",
-        "ggml-small model": root / "models" / "ggml-small.bin",
+        "whisper-cli Vulkan": CLI_PATH,
+        "whisper model": MODEL_PATH,
     }
     for label, path in checks.items():
         if path.is_file():
             print(f"OK: {label} -> {path}")
         else:
             print(f"MISSING: {label} -> {path}")
+            if path == CLI_PATH and os.name != "nt":
+                print("Build it with: bash scripts/build_whisper.sh")
             return False
 
     print("Ready to run with AMD Vulkan GPU.")

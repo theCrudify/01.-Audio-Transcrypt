@@ -102,6 +102,19 @@ http://127.0.0.1:8000
 
 Tunggu badge status berubah menjadi `Siap`. Jangan menutup terminal selama aplikasi digunakan.
 
+## Cara menjalankan di Linux
+
+Binary di `build-vulkan/` khusus Windows, jadi whisper.cpp perlu di-build sekali ke `build-linux/`:
+
+```bash
+sudo apt install libvulkan-dev glslc mesa-vulkan-drivers   # Debian/Ubuntu
+bash scripts/build_whisper.sh
+python3 -m venv .venv && .venv/bin/pip install -r requirements/base.txt
+bash scripts/start_app.sh
+```
+
+Path binary dipilih otomatis sesuai OS (bisa ditimpa dengan `WHISPER_CLI`). Urutan GPU di Linux bisa berbeda dari Windows; jika GPU yang dipakai salah, set `WHISPER_GPU_DEVICE=0`.
+
 ## Verifikasi GPU
 
 Buka:
