@@ -38,7 +38,7 @@ def run_verification() -> bool:
                 print("Build it with: bash scripts/build_whisper.sh")
             return False
 
-    print("Ready to run with AMD Vulkan GPU.")
+    print("Ready to run (Vulkan GPU, CPU fallback).")
     return True
 
 

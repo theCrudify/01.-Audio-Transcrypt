@@ -28,7 +28,8 @@ DEFAULT_CLI_PATH = (
 CLI_PATH = Path(os.getenv("WHISPER_CLI", str(DEFAULT_CLI_PATH)))
 MODEL_PATH = Path(os.getenv("WHISPER_MODEL_PATH", str(BASE_DIR / "models" / f"ggml-{MODEL_SIZE}.bin")))
 VAD_MODEL_PATH = Path(os.getenv("WHISPER_VAD_MODEL_PATH", str(BASE_DIR / "models" / "ggml-silero-v5.1.2.bin")))
-GPU_DEVICE = int(os.getenv("WHISPER_GPU_DEVICE", "1"))
+# "auto" = GPU diskrit (NVIDIA/AMD/Intel Arc), lalu iGPU, lalu CPU; atau nomor GPU Vulkan.
+GPU_DEVICE = os.getenv("WHISPER_GPU_DEVICE", "auto")
 DEVICE = "vulkan"
 COMPUTE_TYPE = "gpu"
 

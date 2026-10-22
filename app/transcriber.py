@@ -1,7 +1,9 @@
 import json
 import os
+import re
 import subprocess
 import threading
+from functools import lru_cache
 from pathlib import Path
 from uuid import uuid4
 
@@ -25,6 +27,38 @@ def backend_ready() -> bool:
         return False
     backend_error = None
     return True
+
+
+def pick_gpu_device(whisper_log: str) -> int | None:
+    """Nomor -dev untuk GPU diskrit pertama, lalu iGPU pertama; None jika tidak ada GPU (pakai CPU)."""
+    found = re.findall(r"found GPU device \d+: .*\(type: (\d+), cnt: (\d+)\)", whisper_log)
+    for wanted_type in ("1", "2"):  # GGML_BACKEND_DEVICE_TYPE_GPU, GGML_BACKEND_DEVICE_TYPE_IGPU
+        for dev_type, cnt in found:
+            if dev_type == wanted_type:
+                return int(cnt)
+    return None
+
+
+@lru_cache(maxsize=1)
+def gpu_device() -> int | None:
+    if GPU_DEVICE != "auto":
+        return int(GPU_DEVICE)
+    # -dev 99 membuat whisper mencetak semua GPU; file kosong membuatnya berhenti setelah model dimuat (~1 detik).
+    probe_path = TEMP_DIR / f"gpu-probe-{uuid4().hex}.wav"
+    probe_path.touch()
+    try:
+        completed = subprocess.run(
+            [str(CLI_PATH), "-m", str(MODEL_PATH), "-f", str(probe_path), "-dev", "99"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+        )
+    finally:
+        probe_path.unlink(missing_ok=True)
+    return pick_gpu_device(completed.stderr + completed.stdout)
 
 
 def run_transcription(
@@ -67,11 +101,11 @@ def run_transcription(
         if vad_filter and VAD_MODEL_PATH.is_file():
             base_command += ["--vad", "-vm", str(VAD_MODEL_PATH), "-vsd", "500"]
 
-        # Coba jalankan dengan GPU yang dikonfigurasi (GPU 1: RX 6550M)
         with gpu_lock:
-            command = base_command + ["-dev", str(GPU_DEVICE)]
+            device = gpu_device()
+            device_args = ["-ng"] if device is None else ["-dev", str(device)]
             completed = subprocess.run(
-                command,
+                base_command + device_args,
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -81,8 +115,8 @@ def run_transcription(
             )
 
             # Jika gagal pada GPU tertentu, coba GPU 0, lalu CPU (laptop/server tanpa GPU Vulkan)
-            fallbacks = [["-dev", "0"]] if GPU_DEVICE != 0 else []
-            for fallback_args in fallbacks + [["-ng"]]:
+            fallbacks = [["-dev", "0"]] if device not in (None, 0) else []
+            for fallback_args in fallbacks + ([["-ng"]] if device is not None else []):
                 if completed.returncode == 0:
                     break
                 completed = subprocess.run(
