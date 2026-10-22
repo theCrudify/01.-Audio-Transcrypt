@@ -147,6 +147,13 @@ $env:MAX_UPLOAD_MB="512"
 python app.py
 ```
 
+Untuk hasil paling akurat, unduh dua model ini ke folder `models/` (otomatis dipakai jika ada):
+
+- `ggml-large-v3-turbo-q5_0.bin` (~550 MB): https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin
+- `ggml-silero-v5.1.2.bin` (~1 MB, untuk opsi VAD): https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin
+
+Tanpa model turbo aplikasi kembali memakai `small`.
+
 Model `small` cukup akurat dan masih sesuai untuk GPU 4 GB. Model lebih besar membutuhkan ruang dan VRAM lebih banyak.
 
 ## Memisahkan audio dari video

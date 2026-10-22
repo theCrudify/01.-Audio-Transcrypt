@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.audio import convert_to_wav
-from app.config import CLI_PATH, GPU_DEVICE, MODEL_PATH, TEMP_DIR
+from app.config import CLI_PATH, GPU_DEVICE, MODEL_PATH, TEMP_DIR, VAD_MODEL_PATH
 from app.diarization import diarization_error, load_diarization_pipeline, speaker_for_segment
 
 backend_error = None
@@ -55,10 +55,14 @@ def run_transcription(
             "-t", str(max(1, min(8, os.cpu_count() or 4))),
             "-bs", str(beam_size),
             "-l", language_code or "auto",
-            "-np",
+            # Tanpa konteks teks sebelumnya: mencegah loop kalimat berulang pada audio panjang.
+            "-mc", "0",
+            "-sns",
         ]
         if task == "translate":
             base_command.append("-tr")
+        if vad_filter and VAD_MODEL_PATH.is_file():
+            base_command += ["--vad", "-vm", str(VAD_MODEL_PATH), "-vsd", "500"]
 
         # Coba jalankan dengan GPU yang dikonfigurasi (GPU 1: RX 6550M)
         command = base_command + ["-dev", str(GPU_DEVICE)]
