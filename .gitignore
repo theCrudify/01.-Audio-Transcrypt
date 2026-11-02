@@ -11,3 +11,6 @@ logs/
 .DS_Store
 build-linux/
 dist/
+
+# Dokumentasi pribadi (bahan postingan LinkedIn, catatan project), tidak ikut ke git
+dokumentasi/
