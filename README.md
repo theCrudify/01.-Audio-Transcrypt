@@ -143,7 +143,7 @@ File besar **tidak disimpan di git** (sudah di-filter `.gitignore`), supaya repo
 | `build-linux/bin/whisper-cli` (Linux) | – | Source [whisper.cpp-amd](https://github.com/lemonade-sdk/whisper.cpp-amd) commit `bd9985c` | Di-clone ke `third_party/` lalu di-build (beberapa menit) |
 | `models/ggml-large-v3-turbo-q5_0.bin` | ±550 MB | Hugging Face | Diunduh |
 | `models/ggml-silero-v5.1.2.bin` | ±1 MB | Hugging Face | Diunduh |
-| `models/pyannote-segmentation-3.0.onnx` + `models/nemo_en_titanet_small.onnx` | ±46 MB | GitHub Release sherpa-onnx | Diunduh (model bedakan pembicara) |
+| `models/pyannote-segmentation-3.0.onnx` + `models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx` | ±33 MB | GitHub Release sherpa-onnx | Diunduh (model bedakan pembicara) |
 
 Yang sudah ada dilewati, jadi run berikutnya langsung start (±1 detik). Script tidak pernah menjalankan `sudo`; jika tool sistem belum ada, script berhenti dan menampilkan perintah `apt` yang perlu dijalankan. Setiap unduhan dicek **sha256**: unduhan yang terputus atau rusak tidak dipakai, cukup jalankan ulang. Jika `WHISPER_CLI` atau `WHISPER_MODEL_PATH` diisi, bagian itu dilewati.
 
@@ -156,7 +156,7 @@ Ya, **model diunduh otomatis** saat `start_app.sh` / `start_app.bat` dijalankan 
 | `models/ggml-large-v3-turbo-q5_0.bin` | 574 MB | Hugging Face `ggerganov/whisper.cpp` | Model transkripsi utama |
 | `models/ggml-silero-v5.1.2.bin` | 0,9 MB | Hugging Face `ggml-org/whisper-vad` | Model VAD (melewati bagian hening) |
 | `models/pyannote-segmentation-3.0.onnx` | 6 MB | GitHub Release `k2-fsa/sherpa-onnx` | Bedakan pembicara: memotong giliran bicara |
-| `models/nemo_en_titanet_small.onnx` | 40 MB | GitHub Release `k2-fsa/sherpa-onnx` | Bedakan pembicara: mengenali suara |
+| `models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx` | 27 MB | GitHub Release `k2-fsa/sherpa-onnx` | Bedakan pembicara: mengenali suara |
 
 - Progres unduhan tampil di terminal (`45%  258 / 574 MB`).
 - Setiap file dicek dengan **sha256** (sama dengan yang dipublikasikan sumbernya). Unduhan yang terputus atau rusak dibuang, bukan dipakai. Jalankan ulang script untuk mengunduh lagi (dari awal, tidak dilanjutkan).
@@ -296,7 +296,8 @@ Tips hasil terbaik: pilih bahasa secara eksplisit, gunakan rekaman yang jelas (m
 | `WHISPER_GPU_DEVICE` | `auto` | `auto` memilih GPU diskrit → iGPU → CPU; atau isi nomor GPU Vulkan (`0`, `1`, …) |
 | `WHISPER_TIMEOUT_SECONDS` | `3600` | Batas waktu satu transkripsi |
 | `MAX_UPLOAD_MB` | `0` (tanpa batas) | Batas ukuran upload dalam MB; berlaku di UI dan server. Disarankan diisi di mode server agar disk tidak penuh |
-| `DIARIZATION_THRESHOLD` | `1.2` | Batas kemiripan suara saat jumlah pembicara *Otomatis*; lebih kecil = lebih banyak pembicara |
+| `DIARIZATION_THRESHOLD` | `1.1` | Batas kemiripan suara saat jumlah pembicara *Otomatis*; lebih kecil = lebih banyak pembicara |
+| `DIARIZATION_MIN_SHARE` | `0.02` | Mode *Otomatis*: pembicara dengan porsi bicara di bawah ini digabung ke pembicara terdekat |
 | `WHISPER_WINDOWS_URL` / `WHISPER_WINDOWS_SHA256` | GitHub Release project ini | Sumber unduhan binary whisper Windows untuk setup otomatis |
 
 Contoh: Linux `WHISPER_GPU_DEVICE=0 bash scripts/start_app.sh`; Windows CMD `set WHISPER_GPU_DEVICE=0` lalu jalankan script; PowerShell `$env:WHISPER_GPU_DEVICE="0"`.
@@ -305,7 +306,7 @@ Contoh: Linux `WHISPER_GPU_DEVICE=0 bash scripts/start_app.sh`; Windows CMD `set
 
 ## Speaker diarization (bedakan pembicara)
 
-Whisper hanya mengubah suara menjadi teks; ia tidak tahu siapa yang berbicara. Fitur **Bedakan pembicara** memberi label `Pembicara 1`, `Pembicara 2`, dst. pada setiap segmen.
+Whisper hanya mengubah suara menjadi teks; ia tidak tahu siapa yang berbicara. Fitur **Bedakan pembicara** memberi label `Pembicara 1`, `Pembicara 2`, dst. pada setiap baris.
 
 **Langsung aktif, tanpa login atau token.** Library dan modelnya ikut [setup otomatis](#setup-otomatis-saat-pertama-dijalankan):
 
@@ -313,22 +314,36 @@ Whisper hanya mengubah suara menjadi teks; ia tidak tahu siapa yang berbicara. F
 |---|---|---|
 | Library [`sherpa-onnx`](https://github.com/k2-fsa/sherpa-onnx) (Apache-2.0) | ±11 MB (Linux) / ±17 MB (Windows) | PyPI, lewat `requirements/base.txt` |
 | `models/pyannote-segmentation-3.0.onnx`: memotong audio per giliran bicara (PyAnnote segmentation-3.0, MIT) | 6 MB | GitHub Release sherpa-onnx |
-| `models/nemo_en_titanet_small.onnx`: mengenali kemiripan suara (NVIDIA NeMo TitaNet-small) | 40 MB | GitHub Release sherpa-onnx |
+| `models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx`: mengenali kemiripan suara (3D-Speaker ERes2Net, VoxCeleb) | 27 MB | GitHub Release sherpa-onnx |
 
 Model PyAnnote resmi di Hugging Face mewajibkan login. sherpa-onnx membagikan versi ONNX-nya di GitHub, jadi tidak perlu akun, token, maupun PyTorch.
 
+**Cara kerja:**
+1. *Segmentasi*: audio dipotong per giliran bicara.
+2. *Sidik suara*: tiap potongan diubah jadi deretan angka yang mewakili ciri suara (bukan isi ucapan, jadi tidak tergantung bahasa).
+3. *Pengelompokan*: potongan yang suaranya mirip = orang yang sama.
+4. *Dicocokkan ke teks*: whisper memberi waktu **per kata**, jadi satu baris whisper yang berisi 2 orang ("…gitu ya?" "Iya betul") **dipecah** di titik ganti pembicara. Waktu kata dikembalikan ke waktu asli memakai tabel VAD dari log whisper.
+
 **Cara pakai:**
 1. Centang **Bedakan pembicara**.
-2. Pilih **Jumlah pembicara**: *Otomatis (ditebak)*, atau angka 2–10 jika jumlah orangnya diketahui (**disarankan**, hasilnya lebih andal).
+2. Pilih **Jumlah pembicara**: *Otomatis (ditebak)*, atau angka 2–10 jika jumlah orangnya diketahui.
 3. Klik **Mulai Transkripsi**.
 
-**Yang perlu diketahui:**
-- **Tebakan otomatis bisa meleset.** Jumlah pembicara ditebak dari kemiripan suara, dan hasilnya sensitif. Pada rapat uji 10 menit, sedikit perubahan batas kemiripan mengubah hasil dari 1 menjadi 3 atau 7 orang. Bila tahu jumlahnya, isi angkanya. Batas bawaan (`DIARIZATION_THRESHOLD=1.2`) bisa diubah: lebih kecil = lebih banyak pembicara.
-- **Berjalan di CPU**, setelah transkripsi selesai. Waktu tambahan ±5 detik per menit audio (rapat 56 menit: +4,6 menit, diukur di laptop dengan CPU 8 thread).
-- **Label anonim**, bukan nama asli. Nomor diberikan sesuai urutan orang pertama kali bicara.
-- Hasil terbaik pada rekaman yang jelas. Suara yang saling tumpang tindih, mikrofon jauh, atau dua orang dengan suara sangat mirip bisa tertukar.
+**Pemilihan model (benchmark):** 8 model pengenal suara dibandingkan pada 6 percakapan uji buatan (2–5 orang, 5 menit, ±⅓ giliran berupa jawaban pendek < 2 detik) dari 40 pembicara dataset LibriSpeech, sehingga siapa bicara kapan diketahui pasti. Model lebih besar (TitaNet-large, WeSpeaker ResNet152/293) ternyata **tidak** lebih akurat dan jauh lebih lambat. Hasil akhir, mode *Otomatis*, dihitung per kata pada ±4.600 kata:
 
-Hasil uji (rekaman rapat bahasa Indonesia diselingi pidato bahasa Inggris, 3 menit): semua 22 segmen rapat → *Pembicara 1*, semua 16 segmen pidato → *Pembicara 2*, baik mode otomatis maupun jumlah = 2.
+| | Sebelumnya (TitaNet-small, batas 1.2, 1 label per baris) | Sekarang (ERes2Net, batas 1.1, dipotong per kata) |
+|---|---|---|
+| Kata dengan label pembicara benar | 65,2% | **90,4%** |
+| Kata di jawaban pendek (< 2 detik) | 41,9% | **63,1%** |
+| Jumlah orang tertebak (benar: 2, 3, 3, 4, 4, 5) | 2, 2, 2, 3, 2, 3 | **2, 3, 3, 4, 4, 4** |
+
+**Yang perlu diketahui:**
+- **Tebakan otomatis tetap bisa meleset**, terutama untuk banyak orang atau suara mirip. Bila tahu jumlahnya, isi angkanya. Batas bawaan `DIARIZATION_THRESHOLD=1.1`: lebih kecil = lebih banyak pembicara (1.0 mulai memecah satu orang jadi dua; 1.2 mulai menggabungkan orang berbeda).
+- **Jawaban sangat pendek masih sering tertukar** (±63% benar), karena potongan suara < 2 detik terlalu sedikit untuk dikenali.
+- **Berjalan di CPU**, setelah transkripsi selesai. Waktu tambahan ±8 detik per menit audio (rapat 56 menit: +7,7 menit, diukur di Ryzen 5 7535HS, 8 thread). Library ini tidak punya jalur GPU AMD di Linux.
+- **Pecahan pembicara digabung** (mode *Otomatis*). Rekaman rapat yang bising/bergema membuat potongan kecil terbaca sebagai orang baru (rapat uji 56 menit: 27 "pembicara", 21 di antaranya < 40 detik). Pembicara dengan total bicara < 2% (`DIARIZATION_MIN_SHARE=0.02`) digabung ke orang yang bicara tepat sebelum/sesudahnya, sehingga rapat itu menjadi 6 pembicara. Akibatnya, orang yang hanya bicara sangat sedikit (mis. < 1 menit dalam rapat 1 jam) bisa ikut tergabung. Mengisi *Jumlah pembicara* menonaktifkan aturan ini.
+- **Label anonim**, bukan nama asli. Nomor diberikan sesuai urutan orang pertama kali bicara.
+- Benchmark memakai rekaman bacaan bahasa Inggris yang bersih. Rekaman rapat (mikrofon jauh, gema, saling potong) umumnya lebih sulit.
 
 ## Membuat paket siap pakai
 
@@ -451,7 +466,7 @@ Bagian ini menjelaskan apa yang memang ditangani aplikasi, apa yang tidak, dan b
 | Gagal di GPU | Jika whisper gagal, aplikasi mencoba ulang di GPU 0 lalu CPU, termasuk untuk kegagalan yang tidak terkait GPU. | Pesan error bisa muncul lebih lama dari seharusnya. |
 | Rekam mikrofon | Hanya bisa di `localhost`/`127.0.0.1` atau HTTPS (aturan browser). | Pengguna mode server lewat `http://<IP>` bisa mengunggah file rekaman. |
 | Bahasa pesan error | Pesan error dari server selalu berbahasa Indonesia, walau UI diset ke EN. | – |
-| Bedakan pembicara | Jumlah pembicara *Otomatis* bisa meleset (sensitif); berjalan di CPU (±5 menit per jam audio); suara tumpang tindih/mirip bisa tertukar. | Isi *Jumlah pembicara* jika diketahui. Lihat [Speaker diarization](#speaker-diarization-bedakan-pembicara). |
+| Bedakan pembicara | Jumlah pembicara *Otomatis* bisa meleset (sensitif); berjalan di CPU (±8 menit per jam audio); suara tumpang tindih/mirip bisa tertukar. | Isi *Jumlah pembicara* jika diketahui. Lihat [Speaker diarization](#speaker-diarization-bedakan-pembicara). |
 | Setup pertama | Butuh internet dan ±600 MB unduhan. Linux butuh tool build (git, cmake, compiler, glslc); Windows butuh rilis binary di GitHub Release. | Setelah itu aplikasi berjalan offline. Alternatif tanpa setup: paket siap pakai. |
 | Paket siap pakai | Berisi salinan kode saat paket dibuat. | Jalankan ulang `scripts/package.sh` setelah kode berubah. |
 

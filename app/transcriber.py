@@ -14,6 +14,7 @@ from app.diarization import (
     diarization_available,
     dominant_speaker,
     label_for,
+    merge_fragments,
     parse_vad_map,
     segment_words,
     speaker_turns,
@@ -244,6 +245,9 @@ def run_transcription(
                 "text": part_text,
                 "speaker": label_for(speaker, speaker_labels),
             })
+
+    if turns is not None:
+        transcript_segments = merge_fragments(transcript_segments)
 
     language = payload.get("result", {}).get("language", language_code or "")
     duration = max((seg["end"] for seg in transcript_segments), default=0)

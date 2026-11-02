@@ -42,9 +42,9 @@ DIARIZATION_MODELS = [
         "sherpa-onnx-pyannote-segmentation-3-0/model.onnx",
     ),
     (
-        "nemo_en_titanet_small.onnx",
-        f"{SHERPA_MODELS}/speaker-recongition-models/nemo_en_titanet_small.onnx",
-        "ad4a1802485d8b34c722d2a9d04249662f2ece5d28a7a039063ca22f515a789e",
+        "3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx",
+        f"{SHERPA_MODELS}/speaker-recongition-models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx",
+        "c59158379255ad66e161679cca6af8d52d51e389e3224ab7d7a7baae295c2db5",
         None,
     ),
 ]

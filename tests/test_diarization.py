@@ -1,6 +1,6 @@
 import unittest
 
-from app.diarization import parse_vad_map, segment_words, speaker_for_segment, split_by_speaker, to_original_time
+from app.diarization import absorb_minor_speakers, merge_fragments, parse_vad_map, segment_words, speaker_for_segment, split_by_speaker, to_original_time
 
 
 class SpeakerForSegmentTest(unittest.TestCase):
@@ -65,6 +65,37 @@ class SplitBySpeakerTest(unittest.TestCase):
         turns = [(0.0, 2.0, 1), (2.0, 2.1, 2), (2.1, 5.0, 1)]
         words = [(0.0, 1.9, " satu dua"), (2.0, 2.1, " tiga"), (2.1, 4.0, " empat")]
         self.assertEqual(split_by_speaker(words, turns), [(0.0, 4.0, "satu dua tiga empat", 1)])
+
+
+
+class MergeFragmentsTest(unittest.TestCase):
+    def test_one_word_tail_joins_same_speaker(self):
+        items = [
+            {"start": 0.0, "end": 8.16, "text": "Every elevation of man", "speaker": "Pembicara 1"},
+            {"start": 8.16, "end": 8.29, "text": "In", "speaker": "Pembicara 1"},
+            {"start": 8.49, "end": 16.1, "text": "the last communication", "speaker": "Pembicara 2"},
+        ]
+        out = merge_fragments(items)
+        self.assertEqual([(i["text"], i["end"]) for i in out], [("Every elevation of man In", 8.29), ("the last communication", 16.1)])
+
+    def test_short_reply_of_other_speaker_is_kept(self):
+        items = [
+            {"start": 0.0, "end": 2.0, "text": "Jadi begitu ya?", "speaker": "Pembicara 1"},
+            {"start": 2.1, "end": 2.6, "text": "Iya betul.", "speaker": "Pembicara 2"},
+        ]
+        self.assertEqual(len(merge_fragments(items)), 2)
+
+
+
+class AbsorbMinorSpeakersTest(unittest.TestCase):
+    def test_tiny_cluster_goes_to_nearest_major_speaker(self):
+        turns = [(0, 50, 0), (50, 50.5, 7), (51, 100, 1), (100, 160, 0), (190, 190.4, 9), (190.5, 240, 1)]
+        out = absorb_minor_speakers(turns, min_share=0.02)
+        self.assertEqual([spk for *_, spk in out], [0, 0, 1, 0, 1, 1])
+
+    def test_nothing_changes_when_all_speakers_are_major(self):
+        turns = [(0, 10, 0), (10, 20, 1)]
+        self.assertEqual(absorb_minor_speakers(turns), turns)
 
 
 if __name__ == "__main__":

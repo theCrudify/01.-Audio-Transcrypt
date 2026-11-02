@@ -12,7 +12,7 @@ PY_VER="3.12.15%2B20261001"
 CACHE=dist/.cache
 mkdir -p "$CACHE"
 
-DIARIZATION_MODELS="models/pyannote-segmentation-3.0.onnx models/nemo_en_titanet_small.onnx"
+DIARIZATION_MODELS="models/pyannote-segmentation-3.0.onnx models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx"
 for f in models/ggml-large-v3-turbo-q5_0.bin models/ggml-silero-v5.1.2.bin $DIARIZATION_MODELS; do
     [ -f "$f" ] || { echo "Missing $f (run: python3 -m app.bootstrap)"; exit 1; }
 done

@@ -1,4 +1,4 @@
-"""Speaker diarization lokal dengan sherpa-onnx: model PyAnnote segmentation-3.0 + NeMo TitaNet-small (ONNX, CPU).
+"""Speaker diarization lokal dengan sherpa-onnx: model PyAnnote segmentation-3.0 + 3D-Speaker ERes2Net VoxCeleb (ONNX, CPU).
 
 Tanpa PyTorch, token, atau login Hugging Face; model diunduh oleh app/bootstrap.py.
 """
@@ -14,7 +14,7 @@ import numpy as np
 
 from app.config import DIARIZATION_EMBEDDING_MODEL, DIARIZATION_SEGMENTATION_MODEL
 
-CLUSTER_THRESHOLD = float(os.getenv("DIARIZATION_THRESHOLD", "1.2"))
+CLUSTER_THRESHOLD = float(os.getenv("DIARIZATION_THRESHOLD", "1.1"))
 _engine = None
 _engine_speakers = 0
 # Satu instance model dipakai bersama; proses diarization dijalankan bergantian.
@@ -46,9 +46,9 @@ def _config(num_speakers: int):
     config = sherpa_onnx.OfflineSpeakerDiarizationConfig(
         segmentation=segmentation,
         embedding=embedding,
-        # num_speakers 0 = ditebak dari kemiripan suara (num_clusters=-1 + threshold). Threshold lebih kecil = lebih
-        # banyak pembicara. 1.2 dari uji rapat + JFK; hasilnya sensitif (1.1 -> 7 orang, 1.3 -> 1 orang pada rapat
-        # yang sama), jadi jika jumlah pembicara diketahui, isi angkanya agar tidak perlu ditebak.
+        # num_speakers 0 = ditebak dari kemiripan suara (num_clusters=-1 + threshold); lebih kecil = lebih banyak orang.
+        # Model + 1.1 dipilih dari benchmark 8 model pada 6 percakapan uji LibriSpeech (2-5 orang, giliran cepat):
+        # jumlah orang tertebak hampir tepat; 1.2 sudah menggabungkan orang berbeda, 1.0 memecah satu orang jadi dua.
         clustering=sherpa_onnx.FastClusteringConfig(
             num_clusters=num_speakers if num_speakers > 0 else -1, threshold=CLUSTER_THRESHOLD
         ),
@@ -83,10 +83,32 @@ def speaker_turns(wav_path: Path, num_speakers: int = 0) -> list[tuple[float, fl
         if rate != _engine.sample_rate:
             raise RuntimeError(f"Diarization butuh audio {_engine.sample_rate} Hz, didapat {rate} Hz.")
         result = _engine.process(samples).sort_by_start_time()
-    return [(seg.start, seg.end, seg.speaker) for seg in result]
+    turns = [(seg.start, seg.end, seg.speaker) for seg in result]
+    return absorb_minor_speakers(turns) if num_speakers == 0 else turns
 
 
 Turn = tuple[float, float, int]  # (mulai, selesai, nomor pembicara mentah)
+
+# Mode Otomatis: "pembicara" dengan total bicara < 2% dianggap pecahan (gema, bising, saling potong) dan digabung.
+# Rapat uji 56 menit: tanpa ini 27 pembicara (21 di antaranya < 40 detik); dengan ini 6.
+MIN_SPEAKER_SHARE = float(os.getenv("DIARIZATION_MIN_SHARE", "0.02"))
+
+
+def absorb_minor_speakers(turns: list[Turn], min_share: float = MIN_SPEAKER_SHARE) -> list[Turn]:
+    """Giliran milik pembicara kecil diberikan ke pembicara utama yang paling dekat waktunya."""
+    total = sum(end - start for start, end, _ in turns)
+    talk: dict[int, float] = {}
+    for start, end, speaker in turns:
+        talk[speaker] = talk.get(speaker, 0.0) + end - start
+    major = {spk for spk, t in talk.items() if t >= min_share * total}
+    if not major or len(major) == len(talk):
+        return turns
+    anchors = [(start, end, spk) for start, end, spk in turns if spk in major]
+
+    def nearest(start: float, end: float) -> int:
+        return min(anchors, key=lambda a: max(a[0] - end, start - a[1], 0.0))[2]
+
+    return [(start, end, spk if spk in major else nearest(start, end)) for start, end, spk in turns]
 
 VAD_MAP_RE = re.compile(r"orig_start: ([\d.]+), orig_end: ([\d.]+), vad_start: ([\d.]+), vad_end: ([\d.]+)")
 # Potongan pembicara lebih pendek dari ini dianggap noise dan digabung ke potongan sebelumnya.
@@ -117,6 +139,27 @@ def label_for(speaker: int | None, labels: dict[int, str]) -> str:
 def speaker_for_segment(turns: list[Turn], start: float, end: float, labels: dict[int, str]) -> str:
     """Label pembicara yang paling lama bicara di rentang [start, end]."""
     return label_for(dominant_speaker(turns, start, end), labels)
+
+
+def merge_fragments(items: list[dict], max_words: int = 2, max_gap: float = 0.3) -> list[dict]:
+    """Gabungkan baris sangat pendek (<= max_words kata) ke baris sebelumnya bila pembicaranya sama dan jaraknya dekat.
+
+    Batas kalimat whisper kadang menyisakan 1 kata ("In", "It") sebagai baris sendiri; ini hanya merapikan tampilan.
+    """
+    merged: list[dict] = []
+    for item in items:
+        prev = merged[-1] if merged else None
+        if (
+            prev is not None
+            and prev.get("speaker") == item.get("speaker")
+            and item["start"] - prev["end"] <= max_gap
+            and len(item["text"].split()) <= max_words
+        ):
+            prev["text"] = f'{prev["text"]} {item["text"]}'
+            prev["end"] = item["end"]
+        else:
+            merged.append(dict(item))
+    return merged
 
 
 def parse_vad_map(whisper_log: str) -> list[tuple[float, float, float, float]]:

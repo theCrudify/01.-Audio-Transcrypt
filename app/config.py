@@ -37,7 +37,7 @@ HOST = os.getenv("HOST", "127.0.0.1")
 
 # Speaker diarization (sherpa-onnx, tanpa login): diunduh otomatis oleh app/bootstrap.py.
 DIARIZATION_SEGMENTATION_MODEL = BASE_DIR / "models" / "pyannote-segmentation-3.0.onnx"
-DIARIZATION_EMBEDDING_MODEL = BASE_DIR / "models" / "nemo_en_titanet_small.onnx"
+DIARIZATION_EMBEDDING_MODEL = BASE_DIR / "models" / "3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx"
 
 # Kode bahasa yang diterima whisper.cpp untuk -l (daftar large-v3). Sinkron dengan WHISPER_LANGS di static/index.html.
 WHISPER_LANGUAGES = frozenset(
