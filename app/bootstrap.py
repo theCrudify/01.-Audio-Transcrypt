@@ -116,8 +116,13 @@ def download(url: str, target: Path, expected_sha256: str) -> None:
     partial.replace(target)
 
 
+def license_path(model: Path) -> Path:
+    """Teks lisensi yang ikut arsip model, disimpan di samping modelnya (lisensi MIT mewajibkan ini disertakan)."""
+    return model.with_name(model.name.rsplit(".", 1)[0] + ".LICENSE.txt")
+
+
 def download_from_archive(url: str, target: Path, expected_sha256: str, member: str) -> None:
-    """Unduh arsip .tar.bz2 (dicek sha256), ambil satu file di dalamnya, lalu hapus arsipnya."""
+    """Unduh arsip .tar.bz2 (dicek sha256), ambil model + file LICENSE-nya, lalu hapus arsipnya."""
     archive = target.with_name(target.name + ".tar.bz2")
     download(url, archive, expected_sha256)
     partial = target.with_name(target.name + ".part")
@@ -128,6 +133,12 @@ def download_from_archive(url: str, target: Path, expected_sha256: str, member: 
                 raise SetupError(f"{member} tidak ada di dalam {archive.name}.")
             with source, partial.open("wb") as out:
                 shutil.copyfileobj(source, out)
+            license_member = member.rsplit("/", 1)[0] + "/LICENSE"
+            if license_member in bundle.getnames():
+                license_source = bundle.extractfile(license_member)
+                if license_source is not None:
+                    with license_source:
+                        license_path(target).write_bytes(license_source.read())
         partial.replace(target)
     except (OSError, tarfile.TarError, KeyError) as exc:
         partial.unlink(missing_ok=True)
@@ -142,12 +153,13 @@ def ensure_models() -> None:
             if not (MODELS_DIR / name).is_file():
                 download(url, MODELS_DIR / name, sha)
     for name, url, sha, member in DIARIZATION_MODELS:
-        if (MODELS_DIR / name).is_file():
+        target = MODELS_DIR / name
+        if target.is_file() and (not member or license_path(target).is_file()):
             continue
         if member:
-            download_from_archive(url, MODELS_DIR / name, sha, member)
+            download_from_archive(url, target, sha, member)
         else:
-            download(url, MODELS_DIR / name, sha)
+            download(url, target, sha)
 
 
 def ensure_windows_cli() -> None:

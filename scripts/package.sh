@@ -12,7 +12,7 @@ PY_VER="3.12.15%2B20261001"
 CACHE=dist/.cache
 mkdir -p "$CACHE"
 
-DIARIZATION_MODELS="models/pyannote-segmentation-3.0.onnx models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx"
+DIARIZATION_MODELS="models/pyannote-segmentation-3.0.onnx models/pyannote-segmentation-3.0.LICENSE.txt models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx"
 for f in models/ggml-large-v3-turbo-q5_0.bin models/ggml-silero-v5.1.2.bin $DIARIZATION_MODELS; do
     [ -f "$f" ] || { echo "Missing $f (run: python3 -m app.bootstrap)"; exit 1; }
 done
@@ -26,6 +26,11 @@ fetch_python() {  # $1 = platform triple, $2 = destination dir
 copy_common() {  # $1 = bundle dir
     mkdir -p "$1/models"
     cp -r app static "$1/"
+    # Redistributed third-party code/models must ship with their license texts.
+    cp THIRD_PARTY_NOTICES.md "$1/"
+    cp third_party/whisper.cpp-amd/LICENSE "$1/LICENSE-whisper.cpp.txt"
+    [ -f LICENSE ] && cp LICENSE "$1/"
+    cp models/pyannote-segmentation-3.0.LICENSE.txt "$1/models/"
     find "$1/app" -name __pycache__ -prune -exec rm -rf {} +
     cp models/ggml-large-v3-turbo-q5_0.bin models/ggml-silero-v5.1.2.bin $DIARIZATION_MODELS "$1/models/"
 }
@@ -69,6 +74,7 @@ if [ "$TARGET" = windows ] || [ "$TARGET" = all ]; then
         -d "$OUT/build-vulkan/bin/Release/"
     # Same binaries as a standalone asset for app/bootstrap.py (upload to a GitHub Release, see README).
     rm -f dist/whisper-vulkan-windows-x64.zip
+    cp third_party/whisper.cpp-amd/LICENSE "$OUT/build-vulkan/bin/Release/LICENSE-whisper.cpp.txt"
     (cd "$OUT/build-vulkan/bin/Release" && zip -qX -9 ../../../../whisper-vulkan-windows-x64.zip ./*)
     echo "Built dist/whisper-vulkan-windows-x64.zip sha256=$(sha256sum dist/whisper-vulkan-windows-x64.zip | cut -d' ' -f1)"
     printf '@echo off\r\ncd /d "%%~dp0"\r\nset "APP_RELOAD=0"\r\nset "KMP_DUPLICATE_LIB_OK=TRUE"\r\npython\\python.exe -m app.main\r\npause\r\n' > "$OUT/start.bat"

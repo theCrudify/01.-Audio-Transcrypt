@@ -71,7 +71,8 @@ Tidak mau install Python? Pakai [paket siap pakai](#cara-1--paket-siap-pakai-tan
 12. [API](#api)
 13. [Struktur project](#struktur-project)
 14. [Cakupan & batasan](#cakupan--batasan)
-15. [Troubleshooting](#troubleshooting)
+15. [Lisensi & atribusi](#lisensi--atribusi)
+16. [Troubleshooting](#troubleshooting)
 
 ## Fitur
 
@@ -412,7 +413,7 @@ scripts/
   start_app.bat      Launcher Windows (menjalankan setup otomatis dulu)
   start_app.sh       Launcher Linux / Git Bash (menjalankan setup otomatis dulu)
   build_whisper.sh   Build whisper.cpp Vulkan untuk Linux
-  package.sh         Membuat paket siap pakai di dist/
+  package.sh         Membuat paket siap pakai di dist/ (beserta teks lisensi pihak ketiga)
 build-vulkan/        whisper.cpp prebuilt Windows   (tidak di-commit)
 build-linux/         whisper.cpp build Linux         (tidak di-commit)
 models/              Model whisper & VAD             (tidak di-commit)
@@ -469,6 +470,13 @@ Bagian ini menjelaskan apa yang memang ditangani aplikasi, apa yang tidak, dan b
 | Bedakan pembicara | Jumlah pembicara *Otomatis* bisa meleset (sensitif); berjalan di CPU (±8 menit per jam audio); suara tumpang tindih/mirip bisa tertukar. | Isi *Jumlah pembicara* jika diketahui. Lihat [Speaker diarization](#speaker-diarization-bedakan-pembicara). |
 | Setup pertama | Butuh internet dan ±600 MB unduhan. Linux butuh tool build (git, cmake, compiler, glslc); Windows butuh rilis binary di GitHub Release. | Setelah itu aplikasi berjalan offline. Alternatif tanpa setup: paket siap pakai. |
 | Paket siap pakai | Berisi salinan kode saat paket dibuat. | Jalankan ulang `scripts/package.sh` setelah kode berubah. |
+
+## Lisensi & atribusi
+
+- Kode project ini berlisensi **MIT** (lihat [LICENSE](LICENSE)): boleh dipakai, diubah, dan dibagikan, termasuk untuk keperluan komersial, asal pemberitahuan hak cipta dan lisensinya tetap disertakan.
+- Komponen pihak ketiga (model AI, whisper.cpp, sherpa-onnx, library Python) beserta lisensinya tercantum di [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Semuanya MIT, Apache-2.0, atau BSD, sehingga boleh dipakai termasuk untuk keperluan komersial, dengan syarat atribusi dan teks lisensinya disertakan saat disebarkan ulang. `package.sh` otomatis menyertakannya di paket portable.
+- Merekam rapat berarti memproses data pribadi (suara orang lain). Minta izin semua peserta sebelum merekam, jelaskan tujuannya, dan hapus rekaman setelah tidak diperlukan. Di Indonesia, ini sejalan dengan UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Aplikasi ini menghapus file upload dan WAV sementara setelah diproses, dan tidak menyimpan hasil transkrip di server.
+- Jika transkrip diolah lagi di layanan lain (misalnya chatbot AI untuk merangkum), teksnya ikut keluar dari komputer. Pastikan itu diizinkan oleh kebijakan perusahaan dan perjanjian kerahasiaan (NDA) dengan client.
 
 ## Troubleshooting
 
