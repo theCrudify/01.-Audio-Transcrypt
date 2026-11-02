@@ -1,3 +1,0 @@
-# Optional: install only when speaker separation is needed.
-pyannote.audio>=3.3,<4.0
-torch>=2.2,<3.0
