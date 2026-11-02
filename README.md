@@ -4,16 +4,41 @@ Aplikasi web untuk mentranskrip audio dan video **sepenuhnya di komputer sendiri
 
 ## Mulai cepat
 
+Repository ini hanya berisi kode (±200 KB). File besar seperti model, whisper.cpp, dan library Python **disiapkan otomatis saat pertama dijalankan** (±600 MB, sekali saja; lihat [Setup otomatis](#setup-otomatis-saat-pertama-dijalankan)). Yang perlu dilakukan setelah clone:
+
+### Linux (Debian/Ubuntu)
+
 ```bash
+# 1. Prasyarat, sekali saja
+sudo apt install python3 python3-venv git build-essential cmake libvulkan-dev glslc mesa-vulkan-drivers
+
+# 2. Clone lalu jalankan
 git clone https://github.com/theCrudify/01.-Audio-Transcrypt.git
 cd 01.-Audio-Transcrypt
-bash scripts/start_app.sh        # Linux
-scripts\start_app.bat            # Windows (atau double-click)
+bash scripts/start_app.sh
 ```
 
-Saat pertama dijalankan, script otomatis menyiapkan semua yang tidak ada di git (±600 MB, sekali saja). Lihat [Setup otomatis](#setup-otomatis-saat-pertama-dijalankan). Setelah itu buka http://127.0.0.1:8000, tunggu badge **Siap**, lalu upload file. Hentikan dengan `Ctrl+C`.
+Run pertama ±4 menit: install library Python, build whisper.cpp, unduh model.
 
-Tidak mau install Python? Pakai [paket siap pakai](#cara-1--paket-siap-pakai-tanpa-install).
+### Windows
+
+1. Install **Python 3.10+** dari [python.org](https://www.python.org/downloads/) dan centang *Add python.exe to PATH*.
+2. Clone repository (atau *Code → Download ZIP* di GitHub lalu ekstrak).
+3. Double-click `scripts\start_app.bat`.
+
+Run pertama ±2–5 menit: install library Python, unduh whisper.cpp siap pakai dan model. Windows tidak perlu Visual Studio atau tool build.
+
+### Setelah itu
+
+Buka http://127.0.0.1:8000, tunggu badge **Siap**, lalu upload file. Hentikan dengan `Ctrl+C`. Run berikutnya langsung start karena semua file sudah ada.
+
+| | Windows | Linux |
+|---|---|---|
+| Prasyarat manual | Python saja | Python + tool build (perintah `apt` di atas) |
+| whisper.cpp | Diunduh siap pakai dari [GitHub Release](https://github.com/theCrudify/01.-Audio-Transcrypt/releases) | Di-build di komputer itu (cocok dengan versi sistem) |
+| Model, library Python, aplikasi | Sama | Sama |
+
+Tidak mau install Python? Pakai [paket siap pakai](#cara-1--paket-siap-pakai-tanpa-install). Setup gagal? Lihat [Troubleshooting](#troubleshooting).
 
 ## Daftar isi
 
