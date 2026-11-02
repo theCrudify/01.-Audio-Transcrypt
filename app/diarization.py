@@ -1,57 +1,174 @@
-import os
-from importlib.util import find_spec
+"""Speaker diarization lokal dengan sherpa-onnx: model PyAnnote segmentation-3.0 + NeMo TitaNet-small (ONNX, CPU).
 
-diarization_pipeline = None
-diarization_error = None
+Tanpa PyTorch, token, atau login Hugging Face; model diunduh oleh app/bootstrap.py.
+"""
+
+import os
+import re
+import threading
+import wave
+from importlib.util import find_spec
+from pathlib import Path
+
+import numpy as np
+
+from app.config import DIARIZATION_EMBEDDING_MODEL, DIARIZATION_SEGMENTATION_MODEL
+
+CLUSTER_THRESHOLD = float(os.getenv("DIARIZATION_THRESHOLD", "1.2"))
+_engine = None
+_engine_speakers = 0
+# Satu instance model dipakai bersama; proses diarization dijalankan bergantian.
+_engine_lock = threading.Lock()
 
 
 def diarization_available() -> bool:
-    """Checks if PyAnnote diarization dependencies and token are ready."""
-    token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
-    return bool(token and find_spec("pyannote.audio"))
+    """Library sherpa-onnx dan kedua model sudah ada."""
+    return (
+        DIARIZATION_SEGMENTATION_MODEL.is_file()
+        and DIARIZATION_EMBEDDING_MODEL.is_file()
+        and find_spec("sherpa_onnx") is not None
+    )
 
 
-def load_diarization_pipeline():
-    """Loads the speaker diarization pipeline on demand."""
-    global diarization_pipeline, diarization_error
-
-    if diarization_pipeline is not None:
-        return diarization_pipeline
-
-    token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_TOKEN")
-    if not token:
-        diarization_error = "HF_TOKEN belum diatur. PyAnnote membutuhkan token Hugging Face."
-        return None
-
-    try:
-        from pyannote.audio import Pipeline
-
-        try:
-            diarization_pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization-3.1",
-                token=token,
-            )
-        except TypeError:
-            diarization_pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization-3.1",
-                use_auth_token=token,
-            )
-        diarization_error = None
-        return diarization_pipeline
-    except Exception as exc:
-        diarization_error = str(exc)
-        return None
+MAX_SPEAKERS = 20
 
 
-def speaker_for_segment(diarization, start: float, end: float, labels: dict[str, str]) -> str:
-    """Matches a Whisper transcription segment to the most overlapping diarized speaker."""
-    best_speaker = "Unknown"
-    best_overlap = 0.0
-    for turn, _, speaker in diarization.itertracks(yield_label=True):
-        overlap = max(0.0, min(end, turn.end) - max(start, turn.start))
+def _config(num_speakers: int):
+    import sherpa_onnx
+
+    threads = max(1, min(8, os.cpu_count() or 4))
+    segmentation = sherpa_onnx.OfflineSpeakerSegmentationModelConfig()
+    segmentation.pyannote.model = str(DIARIZATION_SEGMENTATION_MODEL)
+    segmentation.num_threads = threads
+    embedding = sherpa_onnx.SpeakerEmbeddingExtractorConfig()
+    embedding.model = str(DIARIZATION_EMBEDDING_MODEL)
+    embedding.num_threads = threads
+    config = sherpa_onnx.OfflineSpeakerDiarizationConfig(
+        segmentation=segmentation,
+        embedding=embedding,
+        # num_speakers 0 = ditebak dari kemiripan suara (num_clusters=-1 + threshold). Threshold lebih kecil = lebih
+        # banyak pembicara. 1.2 dari uji rapat + JFK; hasilnya sensitif (1.1 -> 7 orang, 1.3 -> 1 orang pada rapat
+        # yang sama), jadi jika jumlah pembicara diketahui, isi angkanya agar tidak perlu ditebak.
+        clustering=sherpa_onnx.FastClusteringConfig(
+            num_clusters=num_speakers if num_speakers > 0 else -1, threshold=CLUSTER_THRESHOLD
+        ),
+        min_duration_on=0.3,
+        min_duration_off=0.5,
+    )
+    if not config.validate():
+        raise RuntimeError("Konfigurasi diarization tidak valid. Jalankan ulang: python -m app.bootstrap")
+    return config
+
+
+def speaker_turns(wav_path: Path, num_speakers: int = 0) -> list[tuple[float, float, int]]:
+    """Giliran bicara (mulai, selesai, nomor pembicara). wav_path = WAV 16 kHz mono 16-bit dari convert_to_wav.
+
+    num_speakers: 0 = otomatis, atau jumlah pembicara yang sudah diketahui (1..MAX_SPEAKERS).
+    """
+    global _engine, _engine_speakers
+    with wave.open(str(wav_path), "rb") as wav:
+        if wav.getnchannels() != 1 or wav.getsampwidth() != 2:
+            raise RuntimeError("Diarization butuh WAV mono 16-bit.")
+        rate = wav.getframerate()
+        samples = np.frombuffer(wav.readframes(wav.getnframes()), dtype="<i2").astype(np.float32) / 32768.0
+
+    with _engine_lock:
+        if _engine is None:
+            import sherpa_onnx
+
+            _engine = sherpa_onnx.OfflineSpeakerDiarization(_config(num_speakers))
+        elif _engine_speakers != num_speakers:
+            _engine.set_config(_config(num_speakers))
+        _engine_speakers = num_speakers
+        if rate != _engine.sample_rate:
+            raise RuntimeError(f"Diarization butuh audio {_engine.sample_rate} Hz, didapat {rate} Hz.")
+        result = _engine.process(samples).sort_by_start_time()
+    return [(seg.start, seg.end, seg.speaker) for seg in result]
+
+
+Turn = tuple[float, float, int]  # (mulai, selesai, nomor pembicara mentah)
+
+VAD_MAP_RE = re.compile(r"orig_start: ([\d.]+), orig_end: ([\d.]+), vad_start: ([\d.]+), vad_end: ([\d.]+)")
+# Potongan pembicara lebih pendek dari ini dianggap noise dan digabung ke potongan sebelumnya.
+MIN_PART_SECONDS = 0.25
+
+
+def dominant_speaker(turns: list[Turn], start: float, end: float) -> int | None:
+    """Nomor pembicara mentah dengan overlap waktu terbesar di [start, end]; None jika tidak ada."""
+    best_speaker, best_overlap = None, 0.0
+    for turn_start, turn_end, speaker in turns:
+        if turn_start >= end:
+            break  # turns urut waktu mulai
+        overlap = min(end, turn_end) - max(start, turn_start)
         if overlap > best_overlap:
-            best_overlap = overlap
-            if speaker not in labels:
-                labels[speaker] = f"Pembicara {len(labels) + 1}"
-            best_speaker = labels[speaker]
+            best_speaker, best_overlap = speaker, overlap
     return best_speaker
+
+
+def label_for(speaker: int | None, labels: dict[int, str]) -> str:
+    """Nomor urut sesuai kemunculan pertama: Pembicara 1, 2, ..."""
+    if speaker is None:
+        return "Unknown"
+    if speaker not in labels:
+        labels[speaker] = f"Pembicara {len(labels) + 1}"
+    return labels[speaker]
+
+
+def speaker_for_segment(turns: list[Turn], start: float, end: float, labels: dict[int, str]) -> str:
+    """Label pembicara yang paling lama bicara di rentang [start, end]."""
+    return label_for(dominant_speaker(turns, start, end), labels)
+
+
+def parse_vad_map(whisper_log: str) -> list[tuple[float, float, float, float]]:
+    """Tabel (orig_start, orig_end, vad_start, vad_end) dari log whisper-cli --vad, dalam detik."""
+    return [tuple(map(float, m)) for m in VAD_MAP_RE.findall(whisper_log)]
+
+
+def to_original_time(t: float, vad_map: list[tuple[float, float, float, float]]) -> float:
+    """Waktu token whisper (garis waktu tanpa hening) -> waktu asli audio. Tanpa VAD: tidak berubah."""
+    for orig_start, orig_end, vad_start, vad_end in vad_map:
+        if t <= vad_end:
+            return min(orig_end, orig_start + max(0.0, t - vad_start))
+    if vad_map:
+        orig_end, vad_end = vad_map[-1][1], vad_map[-1][3]
+        return orig_end + (t - vad_end)
+    return t
+
+
+def segment_words(segment: dict, vad_map) -> list[tuple[float, float, str]]:
+    """Token whisper -> kata utuh (mulai, selesai, teks) di waktu asli. Token baru tanpa spasi depan = lanjutan kata."""
+    words: list[list] = []
+    for token in segment.get("tokens", []):
+        text = token.get("text", "")
+        if not text or text.startswith("[_") or text.startswith("<|"):
+            continue  # token khusus whisper seperti [_BEG_], [_TT_123]
+        start = to_original_time(token["offsets"]["from"] / 1000, vad_map)
+        end = to_original_time(token["offsets"]["to"] / 1000, vad_map)
+        if words and not text.startswith(" "):
+            words[-1][1] = max(words[-1][1], end)
+            words[-1][2] += text
+        else:
+            words.append([start, end, text])
+    return [(a, b, t) for a, b, t in words]
+
+
+def split_by_speaker(words: list[tuple[float, float, str]], turns: list[Turn]) -> list[tuple[float, float, str, int | None]]:
+    """Kelompokkan kata berurutan per pembicara: (mulai, selesai, teks, pembicara mentah)."""
+    parts: list[list] = []
+    for start, end, text in words:
+        speaker = dominant_speaker(turns, start, max(end, start + 0.01))
+        if parts and (speaker is None or speaker == parts[-1][3]):
+            parts[-1][1], parts[-1][2] = end, parts[-1][2] + text
+        else:
+            parts.append([start, end, text, speaker])
+    merged: list[list] = []
+    for part in parts:
+        too_short = part[1] - part[0] < MIN_PART_SECONDS or not any(c.isalnum() for c in part[2])
+        if merged and (too_short or part[3] == merged[-1][3]):
+            merged[-1][1], merged[-1][2] = part[1], merged[-1][2] + part[2]
+        else:
+            merged.append(part)
+    if len(merged) > 1 and merged[0][3] is None:  # awal kalimat tanpa pembicara -> ikut potongan berikutnya
+        merged[1][0], merged[1][2] = merged[0][0], merged[0][2] + merged[1][2]
+        merged.pop(0)
+    return [(a, b, t.strip(), spk) for a, b, t, spk in merged if t.strip()]

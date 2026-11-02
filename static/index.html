@@ -422,6 +422,16 @@
                 <span><b data-i18n="diarize.title"></b><span id="diarizeHint"></span></span>
               </label>
             </div>
+            <div id="speakersField" class="field" hidden>
+              <label for="numSpeakers" data-i18n="speakers.label"></label>
+              <select id="numSpeakers" class="control">
+                <option value="0" data-i18n="speakers.auto"></option>
+                <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                <option value="5">5</option><option value="6">6</option><option value="7">7</option>
+                <option value="8">8</option><option value="9">9</option><option value="10">10</option>
+              </select>
+              <small data-i18n="speakers.hint"></small>
+            </div>
 
             <div class="actions">
               <button id="processBtn" type="button" class="btn btn-primary" disabled><svg class="icon"><use href="#i-play"/></svg><span data-i18n="action.start"></span></button>
@@ -530,8 +540,11 @@
           'vad.title': 'Lewati hening (VAD)',
           'vad.hint': 'Mengurangi teks "halusinasi"',
           'diarize.title': 'Bedakan pembicara',
-          'diarize.hint': 'Label Pembicara 1, 2, …',
-          'diarize.unavailable': 'Belum terpasang (lihat README)',
+          'speakers.label': 'Jumlah pembicara',
+          'speakers.auto': 'Otomatis (ditebak)',
+          'speakers.hint': 'Tebakan otomatis bisa meleset. Jika tahu berapa orang yang bicara, pilih angkanya agar hasil lebih akurat.',
+          'diarize.hint': 'Label Pembicara 1, 2, … (+ waktu proses di CPU)',
+          'diarize.unavailable': 'Model belum diunduh (jalankan ulang start_app)',
           'action.start': 'Mulai Transkripsi',
           'action.processing': 'Memproses…',
           'action.extract': 'Pisahkan Audio',
@@ -624,8 +637,11 @@
           'vad.title': 'Skip silence (VAD)',
           'vad.hint': 'Reduces "hallucinated" text',
           'diarize.title': 'Identify speakers',
-          'diarize.hint': 'Labels Speaker 1, 2, …',
-          'diarize.unavailable': 'Not installed (see README)',
+          'speakers.label': 'Number of speakers',
+          'speakers.auto': 'Auto (estimated)',
+          'speakers.hint': 'The automatic estimate can be off. If you know how many people speak, pick the number for better results.',
+          'diarize.hint': 'Labels Speaker 1, 2, … (+ CPU processing time)',
+          'diarize.unavailable': 'Model not downloaded (re-run start_app)',
           'action.start': 'Start Transcription',
           'action.processing': 'Processing…',
           'action.extract': 'Extract Audio',
@@ -797,7 +813,9 @@
         $('dropHint').textContent = t('drop.hint', { limit: limitText() });
         $('diarizeHint').textContent = h?.diarization_available ? t('diarize.hint') : t('diarize.unavailable');
         $('diarize').disabled = !h?.diarization_available;
-        if (!h?.diarization_available) $('diarize').checked = false;
+        // Only uncheck once the server has answered; before that the saved choice must survive a page refresh.
+        if (h && !h.diarization_available) $('diarize').checked = false;
+        $('speakersField').hidden = !$('diarize').checked;
         $('metaModel').textContent = h?.model || '-';
         $('metaAccel').textContent = h ? `${h.backend || h.device}${h.gpu_device && h.gpu_device !== 'auto' ? ` #${h.gpu_device}` : ''}` : '-';
         $('metaMax').textContent = limitText();
@@ -1014,6 +1032,7 @@
       function saveSettings() {
         store.set('app-settings', JSON.stringify({
           language: $('language').value, task: $('task').value, beam: $('beamSize').value, vad: $('vadFilter').checked,
+          diarize: $('diarize').checked, speakers: $('numSpeakers').value,
         }));
       }
       function loadSettings() {
@@ -1023,9 +1042,13 @@
         if (s.task) $('task').value = s.task;
         if (s.beam) $('beamSize').value = s.beam;
         if (typeof s.vad === 'boolean') $('vadFilter').checked = s.vad;
+        // Restored as checked; renderStatus() unchecks it again if diarization is unavailable on this server.
+        if (typeof s.diarize === 'boolean') $('diarize').checked = s.diarize;
+        if (s.speakers && [...$('numSpeakers').options].some((o) => o.value === s.speakers)) $('numSpeakers').value = s.speakers;
         $('beamOut').textContent = $('beamSize').value;
       }
-      ['task', 'beamSize', 'vadFilter'].forEach((id) => $(id).addEventListener('change', saveSettings));
+      ['task', 'beamSize', 'vadFilter', 'diarize', 'numSpeakers'].forEach((id) => $(id).addEventListener('change', saveSettings));
+      $('diarize').addEventListener('change', () => { $('speakersField').hidden = !$('diarize').checked; });
       $('beamSize').addEventListener('input', () => { $('beamOut').textContent = $('beamSize').value; });
 
       // ---------- Audio language combobox ----------
@@ -1129,6 +1152,7 @@
         form.append('beam_size', $('beamSize').value);
         form.append('vad_filter', String($('vadFilter').checked));
         form.append('diarize', String($('diarize').checked));
+        form.append('num_speakers', $('diarize').checked ? $('numSpeakers').value : '0');
 
         setBusy('transcribe');
         setPhase('uploading', 0);

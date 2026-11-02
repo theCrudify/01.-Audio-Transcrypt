@@ -12,8 +12,9 @@ PY_VER="3.12.15%2B20261001"
 CACHE=dist/.cache
 mkdir -p "$CACHE"
 
-for f in models/ggml-large-v3-turbo-q5_0.bin models/ggml-silero-v5.1.2.bin; do
-    [ -f "$f" ] || { echo "Missing $f (see README)"; exit 1; }
+DIARIZATION_MODELS="models/pyannote-segmentation-3.0.onnx models/nemo_en_titanet_small.onnx"
+for f in models/ggml-large-v3-turbo-q5_0.bin models/ggml-silero-v5.1.2.bin $DIARIZATION_MODELS; do
+    [ -f "$f" ] || { echo "Missing $f (run: python3 -m app.bootstrap)"; exit 1; }
 done
 
 fetch_python() {  # $1 = platform triple, $2 = destination dir
@@ -26,7 +27,7 @@ copy_common() {  # $1 = bundle dir
     mkdir -p "$1/models"
     cp -r app static "$1/"
     find "$1/app" -name __pycache__ -prune -exec rm -rf {} +
-    cp models/ggml-large-v3-turbo-q5_0.bin models/ggml-silero-v5.1.2.bin "$1/models/"
+    cp models/ggml-large-v3-turbo-q5_0.bin models/ggml-silero-v5.1.2.bin $DIARIZATION_MODELS "$1/models/"
 }
 
 if [ "$TARGET" = linux ] || [ "$TARGET" = all ]; then

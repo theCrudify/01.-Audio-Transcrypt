@@ -3,3 +3,5 @@ uvicorn[standard]>=0.35,<1.0
 python-multipart>=0.0.20,<1.0
 av>=14.0,<19.0
 numpy>=1.26,<3.0
+# Speaker diarization lokal (ONNX, tanpa PyTorch/login)
+sherpa-onnx>=2.0,<3.0

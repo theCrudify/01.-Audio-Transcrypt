@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tarfile
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -28,6 +29,23 @@ MODELS = [
         "ggml-silero-v5.1.2.bin",
         "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin",
         "29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf",
+    ),
+]
+
+# Speaker diarization (sherpa-onnx, tanpa login Hugging Face): (nama file, URL, sha256 unduhan, file di dalam arsip).
+SHERPA_MODELS = "https://github.com/k2-fsa/sherpa-onnx/releases/download"
+DIARIZATION_MODELS = [
+    (
+        "pyannote-segmentation-3.0.onnx",
+        f"{SHERPA_MODELS}/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2",
+        "24615ee884c897d9d2ba09bb4d30da6bb1b15e685065962db5b02e76e4996488",
+        "sherpa-onnx-pyannote-segmentation-3-0/model.onnx",
+    ),
+    (
+        "nemo_en_titanet_small.onnx",
+        f"{SHERPA_MODELS}/speaker-recongition-models/nemo_en_titanet_small.onnx",
+        "ad4a1802485d8b34c722d2a9d04249662f2ece5d28a7a039063ca22f515a789e",
+        None,
     ),
 ]
 
@@ -98,13 +116,38 @@ def download(url: str, target: Path, expected_sha256: str) -> None:
     partial.replace(target)
 
 
+def download_from_archive(url: str, target: Path, expected_sha256: str, member: str) -> None:
+    """Unduh arsip .tar.bz2 (dicek sha256), ambil satu file di dalamnya, lalu hapus arsipnya."""
+    archive = target.with_name(target.name + ".tar.bz2")
+    download(url, archive, expected_sha256)
+    partial = target.with_name(target.name + ".part")
+    try:
+        with tarfile.open(archive, "r:bz2") as bundle:
+            source = bundle.extractfile(member)
+            if source is None:
+                raise SetupError(f"{member} tidak ada di dalam {archive.name}.")
+            with source, partial.open("wb") as out:
+                shutil.copyfileobj(source, out)
+        partial.replace(target)
+    except (OSError, tarfile.TarError, KeyError) as exc:
+        partial.unlink(missing_ok=True)
+        raise SetupError(f"Gagal mengekstrak {archive.name}: {exc}") from exc
+    finally:
+        archive.unlink(missing_ok=True)
+
+
 def ensure_models() -> None:
-    if os.getenv("WHISPER_MODEL_PATH"):
-        return  # model ditentukan sendiri oleh pengguna
-    for name, url, sha in MODELS:
+    if not os.getenv("WHISPER_MODEL_PATH"):  # model whisper ditentukan sendiri oleh pengguna
+        for name, url, sha in MODELS:
+            if not (MODELS_DIR / name).is_file():
+                download(url, MODELS_DIR / name, sha)
+    for name, url, sha, member in DIARIZATION_MODELS:
         if (MODELS_DIR / name).is_file():
             continue
-        download(url, MODELS_DIR / name, sha)
+        if member:
+            download_from_archive(url, MODELS_DIR / name, sha, member)
+        else:
+            download(url, MODELS_DIR / name, sha)
 
 
 def ensure_windows_cli() -> None:

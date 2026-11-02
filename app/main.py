@@ -25,7 +25,7 @@ from app.config import (
     TEMP_DIR,
     WHISPER_LANGUAGES,
 )
-from app.diarization import diarization_available
+from app.diarization import MAX_SPEAKERS, diarization_available
 from app.transcriber import backend_error, backend_ready, run_transcription
 
 # Avoid duplicate OpenMP runtimes on Windows
@@ -151,6 +151,7 @@ async def transcribe_audio(
     beam_size: int = Form(5),
     vad_filter: bool = Form(True),
     diarize: bool = Form(False),
+    num_speakers: int = Form(0),
 ):
     # Validasi sebelum upload disimpan: kode tak dikenal membuat whisper-cli gagal setelah konversi audio.
     language = language.strip().lower()
@@ -161,6 +162,10 @@ async def transcribe_audio(
     if beam_size < 1 or beam_size > 8:
         await file.close()
         raise HTTPException(status_code=400, detail="Beam size harus berada di antara 1 dan 8.")
+
+    if not 0 <= num_speakers <= MAX_SPEAKERS:
+        await file.close()
+        raise HTTPException(status_code=400, detail=f"Jumlah pembicara harus 0 (otomatis) sampai {MAX_SPEAKERS}.")
 
     audio_path = await _save_upload(file)
     try:
@@ -176,6 +181,7 @@ async def transcribe_audio(
             beam_size,
             vad_filter,
             diarize,
+            num_speakers,
         )
         text = " ".join(segment["text"] for segment in transcript_segments).strip()
 
@@ -196,6 +202,7 @@ async def transcribe_audio(
                 "beam_size": beam_size,
                 "vad_filter": vad_filter,
                 "diarize": diarize,
+                "num_speakers": num_speakers,
             },
         }
     except HTTPException:

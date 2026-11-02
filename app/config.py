@@ -35,6 +35,10 @@ COMPUTE_TYPE = "gpu"
 
 HOST = os.getenv("HOST", "127.0.0.1")
 
+# Speaker diarization (sherpa-onnx, tanpa login): diunduh otomatis oleh app/bootstrap.py.
+DIARIZATION_SEGMENTATION_MODEL = BASE_DIR / "models" / "pyannote-segmentation-3.0.onnx"
+DIARIZATION_EMBEDDING_MODEL = BASE_DIR / "models" / "nemo_en_titanet_small.onnx"
+
 # Kode bahasa yang diterima whisper.cpp untuk -l (daftar large-v3). Sinkron dengan WHISPER_LANGS di static/index.html.
 WHISPER_LANGUAGES = frozenset(
     "en zh de es ru ko fr ja pt tr pl ca nl ar sv it id hi fi vi he uk el ms cs ro da hu ta no th ur hr bg lt la mi "

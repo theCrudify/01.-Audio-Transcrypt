@@ -10,7 +10,15 @@ from uuid import uuid4
 
 from app.audio import convert_to_wav
 from app.config import CLI_PATH, GPU_DEVICE, MODEL_PATH, TEMP_DIR, VAD_MODEL_PATH
-from app.diarization import diarization_error, load_diarization_pipeline, speaker_for_segment
+from app.diarization import (
+    diarization_available,
+    dominant_speaker,
+    label_for,
+    parse_vad_map,
+    segment_words,
+    speaker_turns,
+    split_by_speaker,
+)
 
 backend_error = None
 # GPU 4 GB hanya muat satu proses whisper; request lain menunggu giliran.
@@ -138,6 +146,7 @@ def run_transcription(
     beam_size: int,
     vad_filter: bool,
     diarize: bool,
+    num_speakers: int = 0,
 ):
     """Executes whisper.cpp Vulkan backend on GPU and processes segments."""
     if not backend_ready():
@@ -157,7 +166,8 @@ def run_transcription(
             str(CLI_PATH),
             "-m", str(MODEL_PATH),
             "-f", str(wav_path),
-            "-oj",
+            # JSON lengkap berisi waktu per token; dipakai untuk memotong kalimat di titik ganti pembicara.
+            "-ojf" if diarize else "-oj",
             "-of", str(output_prefix),
             "-t", str(max(1, min(8, os.cpu_count() or 4))),
             "-bs", str(beam_size),
@@ -201,35 +211,39 @@ def run_transcription(
             with gpu_lock:
                 language_checks = check_languages(wav_path, starts, max(ends, default=0), used_args)
 
-        diarization = None
+        turns = None
         if diarize:
-            pipeline = load_diarization_pipeline()
-            if pipeline is None:
-                raise RuntimeError(diarization_error or "Diarization tidak tersedia.")
-            diarization = pipeline(str(wav_path))
+            if not diarization_available():
+                raise RuntimeError("Diarization belum siap (model/sherpa-onnx belum ada). Jalankan: python -m app.bootstrap")
+            turns = speaker_turns(wav_path, num_speakers)
     finally:
         for temp_file in [wav_path, *TEMP_DIR.glob(f"whisper-result-{temp_id}.*")]:
             temp_file.unlink(missing_ok=True)
 
     transcript_segments = []
     speaker_labels = {}
+    # Token whisper memakai garis waktu tanpa hening saat --vad; tabel ini mengembalikannya ke waktu asli.
+    vad_map = parse_vad_map(completed.stderr) if turns is not None else []
     for segment in payload.get("transcription", []):
         text = segment.get("text", "").strip()
         offsets = segment.get("offsets", {})
-        if text:
-            item = {
-                "start": round(offsets.get("from", 0) / 1000, 2),
-                "end": round(offsets.get("to", 0) / 1000, 2),
-                "text": text,
-            }
-            if diarization is not None:
-                item["speaker"] = speaker_for_segment(
-                    diarization,
-                    item["start"],
-                    item["end"],
-                    speaker_labels,
-                )
-            transcript_segments.append(item)
+        if not text:
+            continue
+        start, end = round(offsets.get("from", 0) / 1000, 2), round(offsets.get("to", 0) / 1000, 2)
+        if turns is None:
+            transcript_segments.append({"start": start, "end": end, "text": text})
+            continue
+        # Satu kalimat whisper bisa berisi 2 orang ("...gitu ya?" "Iya betul"): pecah di titik ganti pembicara.
+        parts = split_by_speaker(segment_words(segment, vad_map), turns) or [
+            (start, end, text, dominant_speaker(turns, start, end))
+        ]
+        for i, (part_start, part_end, part_text, speaker) in enumerate(parts):
+            transcript_segments.append({
+                "start": start if i == 0 else round(max(start, min(part_start, end)), 2),
+                "end": end if i == len(parts) - 1 else round(max(start, min(part_end, end)), 2),
+                "text": part_text,
+                "speaker": label_for(speaker, speaker_labels),
+            })
 
     language = payload.get("result", {}).get("language", language_code or "")
     duration = max((seg["end"] for seg in transcript_segments), default=0)

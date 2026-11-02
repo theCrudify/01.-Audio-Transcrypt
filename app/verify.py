@@ -38,6 +38,10 @@ def run_verification() -> bool:
                 print("Build it with: bash scripts/build_whisper.sh")
             return False
 
+    from app.diarization import diarization_available
+
+    print("OK: speaker diarization (sherpa-onnx)" if diarization_available()
+          else "INFO: speaker diarization belum siap (opsional) -> python -m app.bootstrap")
     print("Ready to run (Vulkan GPU, CPU fallback).")
     return True
 
