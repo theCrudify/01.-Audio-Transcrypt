@@ -18,7 +18,22 @@ cd 01.-Audio-Transcrypt
 bash scripts/start_app.sh
 ```
 
-Run pertama ±4 menit: install library Python, build whisper.cpp, unduh model.
+Run pertama ±4 menit: install library Python, build whisper.cpp, unduh model. **Model tidak perlu diunduh manual**; lihat [Model terunduh otomatis](#model-terunduh-otomatis).
+
+Contoh output run pertama:
+
+```text
+[setup] Membuat virtual environment .venv ...
+[setup] Menginstall dependensi Python ...
+[setup] Mengambil source whisper.cpp ...
+[setup] Build whisper.cpp dengan Vulkan (sekali saja, beberapa menit) ...
+[setup] Mengunduh ggml-large-v3-turbo-q5_0.bin ...
+        100%  574 / 574 MB
+[setup] Mengunduh ggml-silero-v5.1.2.bin ...
+[setup] Semua file siap.
+...
+Starting app on http://127.0.0.1:8000
+```
 
 ### Windows
 
@@ -26,7 +41,7 @@ Run pertama ±4 menit: install library Python, build whisper.cpp, unduh model.
 2. Clone repository (atau *Code → Download ZIP* di GitHub lalu ekstrak).
 3. Double-click `scripts\start_app.bat`.
 
-Run pertama ±2–5 menit: install library Python, unduh whisper.cpp siap pakai dan model. Windows tidak perlu Visual Studio atau tool build.
+Run pertama ±2–5 menit: install library Python, unduh whisper.cpp siap pakai dan model. Windows tidak perlu Visual Studio atau tool build. Model juga [terunduh otomatis](#model-terunduh-otomatis).
 
 ### Setelah itu
 
@@ -129,7 +144,25 @@ File besar **tidak disimpan di git** (sudah di-filter `.gitignore`), supaya repo
 | `models/ggml-large-v3-turbo-q5_0.bin` | ±550 MB | Hugging Face | Diunduh |
 | `models/ggml-silero-v5.1.2.bin` | ±1 MB | Hugging Face | Diunduh |
 
-Yang sudah ada dilewati, jadi run berikutnya langsung start (±1 detik). Setiap unduhan dicek **sha256**: unduhan yang terputus atau rusak tidak dipakai, cukup jalankan ulang. Jika `WHISPER_CLI` atau `WHISPER_MODEL_PATH` diisi, bagian itu dilewati.
+Yang sudah ada dilewati, jadi run berikutnya langsung start (±1 detik). Script tidak pernah menjalankan `sudo`; jika tool sistem belum ada, script berhenti dan menampilkan perintah `apt` yang perlu dijalankan. Setiap unduhan dicek **sha256**: unduhan yang terputus atau rusak tidak dipakai, cukup jalankan ulang. Jika `WHISPER_CLI` atau `WHISPER_MODEL_PATH` diisi, bagian itu dilewati.
+
+#### Model terunduh otomatis
+
+Ya, **model diunduh otomatis** saat `start_app.sh` / `start_app.bat` dijalankan pertama kali. Tidak perlu mengunduh apa pun dari Hugging Face secara manual.
+
+| File | Ukuran | Sumber | Fungsi |
+|---|---|---|---|
+| `models/ggml-large-v3-turbo-q5_0.bin` | 574 MB | Hugging Face `ggerganov/whisper.cpp` | Model transkripsi utama |
+| `models/ggml-silero-v5.1.2.bin` | 0,9 MB | Hugging Face `ggml-org/whisper-vad` | Model VAD (melewati bagian hening) |
+
+- Progres unduhan tampil di terminal (`45%  258 / 574 MB`).
+- Setiap file dicek dengan **sha256** resmi Hugging Face. Unduhan yang terputus atau rusak dibuang, bukan dipakai. Jalankan ulang script untuk mengunduh lagi (dari awal, tidak dilanjutkan).
+- Hanya sekali: jika file sudah ada di `models/`, unduhan dilewati.
+- Model `ggml-small.bin` **tidak** ikut diunduh; aplikasi selalu memakai model turbo bila tersedia.
+
+Model **tidak** diunduh jika:
+- file sudah ada di `models/` (misalnya disalin dari komputer lain; cara untuk komputer tanpa internet), atau
+- `WHISPER_MODEL_PATH` diisi (memakai model sendiri).
 
 Bisa juga dijalankan terpisah tanpa start server:
 
