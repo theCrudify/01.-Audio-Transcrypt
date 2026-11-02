@@ -2,6 +2,19 @@
 
 Aplikasi web untuk mentranskrip audio dan video **sepenuhnya di komputer sendiri** (tanpa cloud), memakai [whisper.cpp](https://github.com/ggerganov/whisper.cpp) dengan akselerasi GPU Vulkan. Berjalan di **Windows dan Linux**, di laptop pribadi maupun sebagai server untuk satu tim.
 
+## Mulai cepat
+
+```bash
+git clone https://github.com/theCrudify/01.-Audio-Transcrypt.git
+cd 01.-Audio-Transcrypt
+bash scripts/start_app.sh        # Linux
+scripts\start_app.bat            # Windows (atau double-click)
+```
+
+Saat pertama dijalankan, script otomatis menyiapkan semua yang tidak ada di git (±600 MB, sekali saja). Lihat [Setup otomatis](#setup-otomatis-saat-pertama-dijalankan). Setelah itu buka http://127.0.0.1:8000, tunggu badge **Siap**, lalu upload file. Hentikan dengan `Ctrl+C`.
+
+Tidak mau install Python? Pakai [paket siap pakai](#cara-1--paket-siap-pakai-tanpa-install).
+
 ## Daftar isi
 
 1. [Fitur](#fitur)
@@ -17,19 +30,25 @@ Aplikasi web untuk mentranskrip audio dan video **sepenuhnya di komputer sendiri
 11. [Membuat paket siap pakai](#membuat-paket-siap-pakai)
 12. [API](#api)
 13. [Struktur project](#struktur-project)
-14. [Troubleshooting](#troubleshooting)
+14. [Cakupan & batasan](#cakupan--batasan)
+15. [Troubleshooting](#troubleshooting)
 
 ## Fitur
 
-- Upload audio/video lewat browser: `aac, flac, m4a, mkv, mov, mp3, mp4, ogg, opus, wav, webm` (maks. 512 MB, bisa diubah).
-- Bahasa: Indonesia, Inggris, Melayu, Jawa, atau deteksi otomatis.
+- Upload audio/video lewat browser: `aac, flac, m4a, mkv, mov, mp3, mp4, ogg, opus, wav, webm` (tanpa batas ukuran; bisa dibatasi lewat `MAX_UPLOAD_MB`).
+- Fokus bahasa Indonesia & Inggris (termasuk campuran istilah Inggris); ±100 bahasa lain lewat kolom pencarian, atau deteksi otomatis.
+- Peringatan otomatis jika bahasa yang dipilih tidak cocok dengan audio, atau rekaman ternyata campuran bahasa.
 - Mode transkripsi, atau terjemahan langsung ke bahasa Inggris.
-- Timestamp per segmen; salin atau unduh hasil sebagai TXT.
+- Timestamp per segmen (klik untuk memutar); salin atau unduh hasil sebagai TXT / SRT.
+- Rekam langsung dari mikrofon.
+- Tampilan ID/EN, responsif (HP, tablet, laptop), tema terang/gelap.
 - Ekstrak audio dari video menjadi file WAV.
 - GPU Vulkan (AMD, NVIDIA, Intel). Jika GPU gagal, otomatis pindah ke GPU lain lalu ke CPU.
 - VAD (Voice Activity Detection) untuk melewati bagian hening dan mengurangi teks "halusinasi".
 - Opsional: label pembicara (speaker diarization) via PyAnnote.
 - Tidak butuh Anaconda, FFmpeg, atau koneksi internet saat dipakai.
+
+Sebelum dipakai untuk pekerjaan penting, baca [Cakupan & batasan](#cakupan--batasan).
 
 ## Pilih cara pakai
 
@@ -65,51 +84,46 @@ Syarat Linux: glibc 2.38+ (Ubuntu 24.04+, Debian 13+, Fedora 39+) dan driver Vul
 
 ## Cara 2 — Dari source code
 
-### Prasyarat
+### Prasyarat (install manual sekali)
 
-| | Windows | Linux |
+| | Windows | Linux (Debian/Ubuntu) |
 |---|---|---|
-| Python | 3.10+ dari [python.org](https://www.python.org/downloads/) (centang *Add python.exe to PATH*). Anaconda juga bisa, tapi **tidak wajib**. | `python3` + `python3-venv` |
-| whisper.cpp | Sudah tersedia di `build-vulkan/bin/Release/` | Di-build sekali (lihat di bawah) |
-| Model | Unduh ke `models/` (lihat [Model](#model--kualitas-transkripsi)) | sama |
+| Python 3.10+ | Dari [python.org](https://www.python.org/downloads/) (centang *Add python.exe to PATH*). Anaconda juga bisa, tapi **tidak wajib**. | `sudo apt install python3 python3-venv` |
+| Tool build whisper.cpp | Tidak perlu (binary diunduh) | `sudo apt install git build-essential cmake libvulkan-dev glslc mesa-vulkan-drivers` |
+| Internet | Hanya saat pertama dijalankan | sama |
 
-### Windows
+### Setup otomatis saat pertama dijalankan
 
-```bat
-cd "path\ke\project"
-python -m venv .venv
-.venv\Scripts\python -m pip install -r requirements\base.txt
-scripts\start_app.bat
-```
+File besar **tidak disimpan di git** (sudah di-filter `.gitignore`), supaya repository tetap kecil (±200 KB). `scripts/start_app.sh` / `.bat` menjalankan `python -m app.bootstrap` sebelum server start. Script ini menyiapkan:
 
-`start_app.bat` otomatis memakai `.venv` jika ada, lalu `python`, lalu `py`. Script ini juga bisa langsung di-double-click dari folder `scripts\`.
+| Yang disiapkan | Ukuran | Sumber | Caranya |
+|---|---|---|---|
+| `.venv/` + dependensi Python | ±230 MB | PyPI (`requirements/base.txt`) | Dibuat otomatis; diinstall ulang jika `requirements/base.txt` berubah |
+| `build-vulkan/bin/Release/` (Windows) | ±60 MB | [GitHub Release project ini](https://github.com/theCrudify/01.-Audio-Transcrypt/releases) | Diunduh lalu diekstrak |
+| `build-linux/bin/whisper-cli` (Linux) | – | Source [whisper.cpp-amd](https://github.com/lemonade-sdk/whisper.cpp-amd) commit `bd9985c` | Di-clone ke `third_party/` lalu di-build (beberapa menit) |
+| `models/ggml-large-v3-turbo-q5_0.bin` | ±550 MB | Hugging Face | Diunduh |
+| `models/ggml-silero-v5.1.2.bin` | ±1 MB | Hugging Face | Diunduh |
 
-### Linux
+Yang sudah ada dilewati, jadi run berikutnya langsung start (±1 detik). Setiap unduhan dicek **sha256**: unduhan yang terputus atau rusak tidak dipakai, cukup jalankan ulang. Jika `WHISPER_CLI` atau `WHISPER_MODEL_PATH` diisi, bagian itu dilewati.
 
-```bash
-# 1. Paket build (Debian/Ubuntu)
-sudo apt install build-essential cmake libvulkan-dev glslc mesa-vulkan-drivers python3-venv
-
-# 2. Build whisper.cpp dengan Vulkan ke build-linux/
-bash scripts/build_whisper.sh
-
-# 3. Dependensi Python
-python3 -m venv .venv
-.venv/bin/pip install -r requirements/base.txt
-
-# 4. Jalankan
-bash scripts/start_app.sh
-```
-
-Lalu buka http://127.0.0.1:8000. Saat dijalankan dari source, server otomatis restart setiap kali kode berubah (`APP_RELOAD=1`).
-
-### Cek setup
+Bisa juga dijalankan terpisah tanpa start server:
 
 ```bash
-python -m app.verify
+python3 -m app.bootstrap          # Windows: python -m app.bootstrap
 ```
 
-Output terakhir harus `Ready to run (Vulkan GPU, CPU fallback).`
+Saat dijalankan dari source, server otomatis restart setiap kali kode berubah (`APP_RELOAD=1`).
+
+### Cek setup & test
+
+`start_app.sh` / `start_app.bat` sudah menjalankan pengecekan ini otomatis sebelum server start. Untuk menjalankannya manual:
+
+```bash
+.venv/bin/python -m app.verify              # Windows: .venv\Scripts\python -m app.verify
+.venv/bin/python -m unittest discover tests # unit test
+```
+
+Output terakhir `app.verify` harus `Ready to run (Vulkan GPU, CPU fallback).`
 
 ## Mode server (dipakai bersama)
 
@@ -137,18 +151,37 @@ Catatan:
 
 ## Menggunakan aplikasi
 
-1. Tunggu badge status berubah menjadi **Siap**.
-2. Pilih atau drag-and-drop file audio/video.
-3. Atur opsi:
-   - **Bahasa**: pilih bahasa yang diucapkan. Memilih bahasa yang tepat lebih akurat daripada *Auto Detect*.
-   - **Mode**: *Transkripsi* (bahasa asli) atau *Terjemahkan* (ke Inggris).
-   - **Beam (1–10)**: 5 adalah keseimbangan terbaik; lebih besar sedikit lebih akurat tapi lebih lambat.
-   - **VAD**: biarkan aktif; melewati bagian hening.
-   - **Bedakan pembicara**: hanya muncul jika diarization dipasang.
-4. Klik **Mulai Transkripsi**. File 1 jam ±3 menit di GPU RX 6500M.
-5. Salin atau unduh hasil sebagai TXT.
+Tampilan menyesuaikan HP, tablet, dan laptop. Bahasa antarmuka bisa diganti lewat tombol **ID / EN** di kanan atas (otomatis mengikuti bahasa browser saat pertama dibuka), dan tema terang/gelap lewat tombol di sebelahnya (default mengikuti sistem). Pilihan bahasa, tema, dan pengaturan transkripsi tersimpan di browser.
 
-**Pisahkan Audio dari Video**: mengekstrak audio video menjadi WAV yang terunduh otomatis dan menggantikan file yang dipilih. Ini opsional — *Mulai Transkripsi* bisa langsung memproses video.
+1. Tunggu badge status berubah menjadi **Siap**.
+2. Pilih atau drag-and-drop file audio/video, atau rekam lewat tab **Rekam**.
+3. Atur opsi:
+   - **Bahasa audio**: saat diklik muncul 5 pilihan utama (Indonesia, Inggris, Deteksi otomatis, Melayu, Jawa). Ketik nama bahasa untuk mencari ±100 bahasa lain yang didukung Whisper, misalnya "jepang", "sunda", "arab" (nama Indonesia, Inggris, atau kode `ja` bisa dipakai). Untuk percakapan campuran Indonesia–Inggris pilih *Indonesia*. Memilih bahasa secara eksplisit lebih akurat daripada *Deteksi otomatis*.
+   - **Mode**: *Transkripsi* (bahasa asli) atau *Terjemahkan → Inggris*.
+   - **Ketelitian (beam 1–8)**: 5 adalah keseimbangan terbaik; lebih besar sedikit lebih akurat tapi lebih lambat.
+   - **Lewati hening (VAD)**: biarkan aktif.
+   - **Bedakan pembicara**: aktif hanya jika diarization dipasang.
+4. Klik **Mulai Transkripsi**. File 1 jam ±3 menit di GPU RX 6500M.
+5. Klik timestamp untuk memutar media dari titik itu. Salin hasil, atau unduh sebagai TXT / SRT (subtitle).
+
+**Peringatan bahasa**: jika bahasa audio dipilih manual, setelah transkripsi selesai server mengecek bahasa di awal, tengah, dan akhir bagian yang berisi ucapan (klip 30 detik, +±4 detik total). Ada dua jenis peringatan:
+- *Salah pilih*: semua titik terdeteksi bahasa lain → tombol **Transkrip ulang sebagai …**.
+- *Rekaman campuran*: hanya sebagian titik yang berbeda → diberi tahu menit ke berapa; sarannya potong file per bagian.
+
+Indonesia ↔ Melayu dianggap cocok karena Whisper sering tertukar di antara keduanya. Panel **ⓘ Cara kerja pilihan bahasa** di aplikasi merangkum catatan di bawah.
+
+### Catatan: cara kerja pilihan bahasa
+
+- **Satu bahasa dikunci untuk seluruh file.** Memilih *Indonesia* berarti whisper memakai bahasa Indonesia dari awal sampai akhir; tidak ada perpindahan otomatis per kalimat. Kartu *Bahasa* di hasil menandainya sebagai "dikunci (dipilih)".
+- **Campuran Indonesia + istilah Inggris aman.** Pilih *Indonesia*; istilah seperti "follow up" atau "deadline" tetap tertulis Inggris.
+- **Bagian panjang yang sepenuhnya berbahasa lain tidak bisa ditebak hasilnya** (bisa tetap tertulis bahasa aslinya, bisa diterjemahkan, bisa kacau). Potong file per bagian lalu transkrip masing-masing.
+- **Deteksi otomatis hanya menilai 30 detik pertama**, lalu memakai bahasa itu untuk seluruh file. Rekaman yang dibuka dengan bahasa Inggris akan ditranskrip sebagai Inggris semuanya.
+- Pengecekan awal/tengah/akhir hanya sampel 3 titik; perpindahan bahasa singkat di antara titik itu tidak akan terdeteksi.
+
+
+**Pisahkan Audio**: mengekstrak audio video menjadi WAV yang terunduh otomatis dan menggantikan file yang dipilih. Ini opsional — *Mulai Transkripsi* bisa langsung memproses video.
+
+**Rekam dari mikrofon** hanya bisa di `http://127.0.0.1`/`localhost` atau HTTPS (aturan keamanan browser). Pengguna di mode server yang membuka `http://<IP-server>` tetap bisa mengunggah file rekaman.
 
 ## GPU yang didukung
 
@@ -173,7 +206,7 @@ Taruh model di folder `models/`. Aplikasi otomatis memakai model terbaik yang te
 | [`ggml-small.bin`](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin) | ~490 MB | Fallback jika turbo tidak ada. |
 | [`ggml-silero-v5.1.2.bin`](https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin) | ~1 MB | Model VAD. Tanpa file ini, opsi VAD diabaikan. |
 
-Linux, unduh sekaligus:
+Model turbo dan VAD **diunduh otomatis** oleh [setup otomatis](#setup-otomatis-saat-pertama-dijalankan). Unduh manual hanya jika perlu (misalnya komputer tanpa internet, file disalin dari komputer lain):
 
 ```bash
 curl -L -o models/ggml-large-v3-turbo-q5_0.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin
@@ -201,8 +234,9 @@ Tips hasil terbaik: pilih bahasa secara eksplisit, gunakan rekaman yang jelas (m
 | `WHISPER_CLI` | Windows: `build-vulkan/bin/Release/whisper-cli.exe`<br>Linux: `build-linux/bin/whisper-cli` | Path binary whisper |
 | `WHISPER_GPU_DEVICE` | `auto` | `auto` memilih GPU diskrit → iGPU → CPU; atau isi nomor GPU Vulkan (`0`, `1`, …) |
 | `WHISPER_TIMEOUT_SECONDS` | `3600` | Batas waktu satu transkripsi |
-| `MAX_UPLOAD_MB` | `512` | Batas ukuran upload |
+| `MAX_UPLOAD_MB` | `0` (tanpa batas) | Batas ukuran upload dalam MB; berlaku di UI dan server. Disarankan diisi di mode server agar disk tidak penuh |
 | `HF_TOKEN` | – | Token Hugging Face untuk diarization |
+| `WHISPER_WINDOWS_URL` / `WHISPER_WINDOWS_SHA256` | GitHub Release project ini | Sumber unduhan binary whisper Windows untuk setup otomatis |
 
 Contoh: Linux `WHISPER_GPU_DEVICE=0 bash scripts/start_app.sh`; Windows CMD `set WHISPER_GPU_DEVICE=0` lalu jalankan script; PowerShell `$env:WHISPER_GPU_DEVICE="0"`.
 
@@ -215,7 +249,7 @@ Whisper hanya mengubah suara menjadi teks; ia tidak tahu siapa yang berbicara. U
 1. Buat token *read* di Hugging Face dan terima syarat akses model `pyannote/speaker-diarization-3.1` beserta model dependensinya.
 2. Install dependensi tambahan (±2 GB, termasuk PyTorch):
    ```bash
-   pip install -r requirements/diarization.txt
+   .venv/bin/pip install -r requirements/diarization.txt     # Windows: .venv\Scripts\pip install -r requirements\diarization.txt
    ```
 3. Set token lalu jalankan aplikasi:
    ```bash
@@ -247,6 +281,21 @@ Hasil di `dist/`:
 
 Syarat: model turbo dan VAD sudah ada di `models/`, plus `curl`, `zip`, dan `unzip`.
 
+Target `windows` juga menghasilkan `dist/whisper-vulkan-windows-x64.zip` (±19 MB): binary whisper Windows yang diunduh oleh [setup otomatis](#setup-otomatis-saat-pertama-dijalankan).
+
+Paket berisi **salinan** `app/` dan `static/` saat dibuat. Setiap ada perubahan kode, jalankan ulang `package.sh`, karena paket lama tidak ikut ter-update.
+
+### Merilis binary Windows untuk setup otomatis (maintainer)
+
+Pengguna Windows yang clone dari git mengunduh binary whisper dari GitHub Release, bukan dari repository. Langkahnya (sekali, dan setiap kali binary whisper berubah):
+
+1. Buat rilis di https://github.com/theCrudify/01.-Audio-Transcrypt/releases/new dengan tag **`whisper-vulkan-bd9985c`**.
+2. Upload `dist/whisper-vulkan-windows-x64.zip` sebagai asset rilis, lalu publish.
+3. Repository harus **public**. Dari repo private, unduhan tanpa login akan gagal (404).
+4. Jika zip dibuat ulang, sha256-nya berubah. Perbarui `WINDOWS_BINARY_SHA256` (dan tag di `WINDOWS_BINARY_URL` jika versi whisper berubah) di `app/bootstrap.py` dengan nilai yang dicetak `package.sh`.
+
+Tanpa rilis ini, setup di Windows berhenti dengan pesan untuk menyalin folder `build-vulkan\` dari paket siap pakai. Lokasi lain bisa dipakai lewat env `WHISPER_WINDOWS_URL` + `WHISPER_WINDOWS_SHA256`.
+
 ## API
 
 | Method | Endpoint | Keterangan |
@@ -254,7 +303,7 @@ Syarat: model turbo dan VAD sudah ada di `models/`, plus `curl`, `zip`, dan `unz
 | GET | `/health` | Status backend, model, GPU, diarization |
 | POST | `/api/warmup` | Cek kesiapan backend |
 | POST | `/api/extract-audio` | Form `file` → unduhan WAV |
-| POST | `/api/transcribe` | Form: `file`, `language` (`id`/`en`/`ms`/`jw`/`auto`), `task` (`transcribe`/`translate`), `beam_size` (1–10), `vad_filter`, `diarize` |
+| POST | `/api/transcribe` | Form: `file`, `language` (kode Whisper mis. `id`/`en`/`ja`, atau `auto`), `task` (`transcribe`/`translate`), `beam_size` (1–8, batas whisper.cpp), `vad_filter`, `diarize`. Respons berisi `language_checks`: daftar `{at, language, probability}` hasil cek bahasa di awal/tengah/akhir ucapan (kosong jika `language=auto`) |
 
 Contoh:
 
@@ -272,13 +321,15 @@ app/
   audio.py           Konversi audio/video ke WAV 16 kHz (PyAV, tanpa FFmpeg)
   diarization.py     Speaker diarization (PyAnnote, opsional)
   verify.py          Cek dependensi, binary, dan model
+  bootstrap.py       Setup otomatis: .venv, whisper-cli, model (hanya library standar)
 static/              Frontend (index.html)
+tests/               Unit test (python -m unittest discover tests)
 requirements/
   base.txt           Dependensi utama
   diarization.txt    Dependensi diarization (opsional)
 scripts/
-  start_app.bat      Launcher Windows
-  start_app.sh       Launcher Linux / Git Bash
+  start_app.bat      Launcher Windows (menjalankan setup otomatis dulu)
+  start_app.sh       Launcher Linux / Git Bash (menjalankan setup otomatis dulu)
   build_whisper.sh   Build whisper.cpp Vulkan untuk Linux
   package.sh         Membuat paket siap pakai di dist/
 build-vulkan/        whisper.cpp prebuilt Windows   (tidak di-commit)
@@ -289,10 +340,66 @@ uploads/             File sementara saat diproses    (tidak di-commit)
 dist/                Hasil package.sh                (tidak di-commit)
 ```
 
+## Cakupan & batasan
+
+Bagian ini menjelaskan apa yang memang ditangani aplikasi, apa yang tidak, dan batasan teknis yang perlu diketahui sebelum dipakai untuk pekerjaan penting.
+
+### Termasuk cakupan
+
+- **Transkripsi file rekaman** audio/video menjadi teks bertimestamp, berjalan sepenuhnya di komputer sendiri.
+- **Fokus bahasa Indonesia & Inggris**, termasuk bahasa Indonesia yang bercampur istilah Inggris. ±100 bahasa lain tersedia lewat pencarian, dengan kualitas yang berbeda-beda per bahasa.
+- **Terjemahan langsung ke bahasa Inggris.**
+- **Ekspor TXT & SRT**, salin teks, dan klik timestamp untuk memutar bagian itu.
+- **Pemakaian pribadi** di satu komputer, atau **server LAN tepercaya** untuk tim kecil.
+- **Privasi:** file upload dan WAV sementara dihapus setelah diproses; hasil transkrip hanya ada di browser pengguna, tidak disimpan di server.
+- **UI ID/EN**, responsif untuk HP, tablet, dan laptop, dengan tema terang/gelap.
+
+### Di luar cakupan (tidak didukung)
+
+| Tidak didukung | Keterangan / alternatif |
+|---|---|
+| Transkripsi real-time (live) | Rekaman mikrofon baru diproses setelah perekaman dihentikan. |
+| Terjemahan ke selain bahasa Inggris | Batasan Whisper. Misalnya Inggris → Indonesia tidak bisa. |
+| Ganti bahasa otomatis per kalimat | Satu bahasa dikunci per file (lihat [catatan bahasa](#catatan-cara-kerja-pilihan-bahasa)). Potong file per bagian bahasa. |
+| Nama asli pembicara | Diarization (opsional) hanya memberi label *Pembicara 1, 2, …*. |
+| Riwayat hasil | Hasil hilang saat halaman di-refresh atau ditutup. Unduh TXT/SRT dulu. |
+| Edit teks, ringkasan otomatis, ekspor DOCX/PDF | Salin atau unduh TXT, lalu olah di aplikasi lain. |
+| Login, hak akses, HTTPS | Siapa pun di jaringan bisa memakai server. Jangan buka ke internet. |
+| Membatalkan transkripsi yang sedang berjalan | Lihat *Batal / tutup halaman* di bawah. |
+
+### Batasan teknis
+
+| Area | Batasan | Dampak / yang bisa dilakukan |
+|---|---|---|
+| Akurasi | Whisper bisa salah menulis nama orang, istilah teknis, singkatan, dan angka. Pada bagian hening/musik kadang muncul teks "halusinasi". | Biarkan VAD aktif dan periksa ulang hasil untuk dokumen penting. |
+| Pilihan bahasa | Satu bahasa dikunci untuk seluruh file. | Pilih bahasa mayoritas; bagian panjang berbahasa lain sebaiknya ditranskrip terpisah. |
+| Deteksi otomatis | Hanya menilai 30 detik pertama. | Pilih bahasa secara manual jika diketahui. |
+| Cek bahasa | Hanya 3 titik sampel (awal/tengah/akhir), menambah ±4 detik. | Perpindahan bahasa singkat di antara titik itu tidak terdeteksi. |
+| Bahasa daerah | Jawa dan Sunda jauh lebih lemah dari Indonesia/Inggris karena data latih Whisper sedikit. | Hasil lebih andal bila memilih *Indonesia*; peningkatan nyata butuh model yang di-fine-tune. |
+| Ketelitian (beam) | Maksimal 8 (batas whisper.cpp `WHISPER_MAX_DECODERS`). | Di atas 5 peningkatannya sangat kecil tapi lebih lambat. |
+| Antrean | Hanya satu transkripsi berjalan di GPU pada satu waktu; posisi antrean tidak ditampilkan. | Di mode server, pengguna lain melihat timer berjalan lebih lama sampai gilirannya. |
+| Progres | Persentase hanya untuk upload; transkripsi hanya menampilkan waktu berjalan. | Perkiraan: ±3 menit per jam audio di GPU RX 6500M; di CPU ±1,5× durasi audio. |
+| Batal / tutup halaman | Menutup atau me-refresh halaman **tidak** menghentikan proses di server; GPU tetap terpakai sampai selesai, dan hasilnya hilang. | Tunggu sampai selesai; aplikasi memberi peringatan saat halaman akan ditutup. |
+| Waktu maksimal | `WHISPER_TIMEOUT_SECONDS` = 1 jam per file. File sangat panjang di CPU bisa melewatinya. | Naikkan nilainya atau pakai GPU. |
+| Ukuran file | Default tanpa batas. Selama diproses, server butuh ruang disk untuk file asli + WAV sementara (±115 MB per jam audio). | Di mode server, isi `MAX_UPLOAD_MB`. |
+| Gagal di GPU | Jika whisper gagal, aplikasi mencoba ulang di GPU 0 lalu CPU, termasuk untuk kegagalan yang tidak terkait GPU. | Pesan error bisa muncul lebih lama dari seharusnya. |
+| Rekam mikrofon | Hanya bisa di `localhost`/`127.0.0.1` atau HTTPS (aturan browser). | Pengguna mode server lewat `http://<IP>` bisa mengunggah file rekaman. |
+| Bahasa pesan error | Pesan error dari server selalu berbahasa Indonesia, walau UI diset ke EN. | – |
+| Diarization | Opsional, butuh token Hugging Face dan ±2 GB dependensi, tidak termasuk paket siap pakai. | Lihat [Speaker diarization](#speaker-diarization-opsional). |
+| Setup pertama | Butuh internet dan ±600 MB unduhan. Linux butuh tool build (git, cmake, compiler, glslc); Windows butuh rilis binary di GitHub Release. | Setelah itu aplikasi berjalan offline. Alternatif tanpa setup: paket siap pakai. |
+| Paket siap pakai | Berisi salinan kode saat paket dibuat. | Jalankan ulang `scripts/package.sh` setelah kode berubah. |
+
 ## Troubleshooting
 
+**`[setup] GAGAL: ...` saat pertama dijalankan**
+Pesan di bawahnya menyebutkan penyebab dan perbaikannya. Yang umum:
+- *Gagal mengunduh*: cek koneksi internet, lalu jalankan ulang (unduhan yang terputus tidak dipakai).
+- *Tool berikut belum terpasang* (Linux): jalankan perintah `sudo apt install ...` yang ditampilkan.
+- *Butuh python3-venv* (Linux): `sudo apt install python3-venv`.
+- *Binary Windows 404*: rilis GitHub belum dibuat atau repo masih private (lihat [Merilis binary Windows](#merilis-binary-windows-untuk-setup-otomatis-maintainer)). Sementara itu, salin folder `build-vulkan\` dari paket siap pakai.
+
 **Status tidak pernah "Siap" / `503 Service Unavailable`**
-Jalankan `python -m app.verify` untuk melihat file mana yang hilang (binary whisper atau model).
+Jalankan `.venv/bin/python -m app.verify` (Windows: `.venv\Scripts\python -m app.verify`) untuk melihat file mana yang hilang (binary whisper atau model).
 
 **`whisper.cpp gagal (exit ...)`**
 Pesan error menampilkan log whisper. Penyebab umum:
@@ -321,5 +428,14 @@ Install Python dari python.org dan centang *Add python.exe to PATH*, atau pakai 
 **Port 8000 sudah dipakai**
 Aplikasi otomatis memakai port berikutnya (8001, 8002, …); lihat alamat yang dicetak di terminal.
 
-**Pilihan bahasa Jawa tidak berpengaruh / error**
-Refresh browser dengan Ctrl+F5 agar memakai halaman terbaru (kode bahasa `jw`).
+**`too many decoders requested (10), max = 8` / `Beam size harus berada di antara 1 dan 8`**
+Halaman lama masih tersimpan di browser (dulu slider beam sampai 10). Refresh dengan Ctrl+F5; slider sekarang maksimal 8.
+
+**`Kode bahasa tidak dikenal`**
+Hanya terjadi lewat API: isi `language` dengan `auto` atau kode Whisper (`id`, `en`, `ja`, `jw` untuk Jawa, `su` untuk Sunda, dst.). Daftar lengkapnya ada di `WHISPER_LANGUAGES` pada `app/config.py`.
+
+**Muncul peringatan bahasa padahal pilihan sudah benar**
+Peringatan berdasarkan 3 sampel 30 detik, jadi bisa keliru pada bagian yang didominasi istilah asing, musik, atau suara latar. Jika hasil transkrip terlihat baik, klik **Abaikan**.
+
+**Tampilan aneh / fitur baru tidak muncul setelah update**
+Refresh browser dengan Ctrl+F5 agar memakai halaman terbaru.

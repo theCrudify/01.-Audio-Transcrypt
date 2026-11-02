@@ -23,6 +23,7 @@ from app.config import (
     MODEL_SIZE,
     STATIC_DIR,
     TEMP_DIR,
+    WHISPER_LANGUAGES,
 )
 from app.diarization import diarization_available
 from app.transcriber import backend_error, backend_ready, run_transcription
@@ -54,8 +55,12 @@ async def _save_upload(file: UploadFile) -> Path:
     target_path = TEMP_DIR / temp_name
 
     try:
+        written = 0
         with target_path.open("wb") as buffer:
             while chunk := await file.read(1024 * 1024):
+                written += len(chunk)
+                if MAX_UPLOAD_BYTES and written > MAX_UPLOAD_BYTES:
+                    raise HTTPException(status_code=413, detail=f"File terlalu besar. Maksimal {MAX_UPLOAD_MB} MB.")
                 buffer.write(chunk)
     except Exception:
         if target_path.exists():
@@ -147,16 +152,23 @@ async def transcribe_audio(
     vad_filter: bool = Form(True),
     diarize: bool = Form(False),
 ):
+    # Validasi sebelum upload disimpan: kode tak dikenal membuat whisper-cli gagal setelah konversi audio.
+    language = language.strip().lower()
+    if language != "auto" and language not in WHISPER_LANGUAGES:
+        await file.close()
+        raise HTTPException(status_code=400, detail=f"Kode bahasa tidak dikenal: {language!r}. Gunakan 'auto' atau kode Whisper seperti 'id', 'en'.")
+    # whisper.cpp menolak lebih dari 8 decoder (WHISPER_MAX_DECODERS).
+    if beam_size < 1 or beam_size > 8:
+        await file.close()
+        raise HTTPException(status_code=400, detail="Beam size harus berada di antara 1 dan 8.")
+
     audio_path = await _save_upload(file)
     try:
         if not audio_path.is_file():
             raise HTTPException(status_code=500, detail="File upload tidak berhasil disimpan di server.")
 
-        if beam_size < 1 or beam_size > 10:
-            raise HTTPException(status_code=400, detail="Beam size harus berada di antara 1 dan 10.")
-
-        language_code = None if language == "auto" else language.strip().lower()
-        transcript_segments, detected_language, duration = await run_in_threadpool(
+        language_code = None if language == "auto" else language
+        transcript_segments, detected_language, duration, language_checks = await run_in_threadpool(
             run_transcription,
             audio_path,
             language_code,
@@ -172,6 +184,8 @@ async def transcribe_audio(
             "language": detected_language,
             "language_probability": 1.0,
             "duration": duration,
+            # Saat bahasa dipilih manual: bahasa yang terdeteksi di awal/tengah/akhir ucapan ([] jika auto).
+            "language_checks": language_checks,
             "segments": transcript_segments,
             "text": text,
             "settings": {

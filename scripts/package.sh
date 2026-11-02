@@ -66,6 +66,10 @@ if [ "$TARGET" = windows ] || [ "$TARGET" = all ]; then
         --only-binary=:all: --no-deps -d "$CACHE"
     unzip -qjo "$CACHE"/msvc_runtime-14.44.35112-*.whl 'msvc_runtime-14.44.35112.data/data/Scripts/*.dll' \
         -d "$OUT/build-vulkan/bin/Release/"
+    # Same binaries as a standalone asset for app/bootstrap.py (upload to a GitHub Release, see README).
+    rm -f dist/whisper-vulkan-windows-x64.zip
+    (cd "$OUT/build-vulkan/bin/Release" && zip -qX -9 ../../../../whisper-vulkan-windows-x64.zip ./*)
+    echo "Built dist/whisper-vulkan-windows-x64.zip sha256=$(sha256sum dist/whisper-vulkan-windows-x64.zip | cut -d' ' -f1)"
     printf '@echo off\r\ncd /d "%%~dp0"\r\nset "APP_RELOAD=0"\r\nset "KMP_DUPLICATE_LIB_OK=TRUE"\r\npython\\python.exe -m app.main\r\npause\r\n' > "$OUT/start.bat"
     rm -f dist/AudioTranscrypt-windows.zip
     (cd dist && zip -qr AudioTranscrypt-windows.zip AudioTranscrypt-windows)

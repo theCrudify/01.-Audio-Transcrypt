@@ -2,7 +2,7 @@
 cd /d "%~dp0\.."
 set "KMP_DUPLICATE_LIB_OK=TRUE"
 
-rem Prefer the project venv, then any Python on PATH (python.org, Anaconda, or the py launcher).
+rem Any Python 3.10+ works for setup (python.org, Anaconda, or the py launcher); it creates .venv on the first run.
 set "PY="
 if exist ".venv\Scripts\python.exe" set "PY=.venv\Scripts\python.exe"
 if not defined PY where python >nul 2>&1 && set "PY=python"
@@ -16,12 +16,22 @@ if not defined PY (
 )
 
 echo.
+echo Preparing files (first run downloads ~600 MB)...
+%PY% -m app.bootstrap
+if errorlevel 1 (
+    echo.
+    echo Setup gagal. Baca pesan [setup] di atas, perbaiki, lalu jalankan ulang script ini.
+    pause
+    exit /b 1
+)
+set "PY=.venv\Scripts\python.exe"
+
+echo.
 echo Checking environment...
 %PY% -m app.verify
 if errorlevel 1 (
     echo.
-    echo Setup failed. Install dependencies first:
-    echo     %PY% -m pip install -r requirements\base.txt
+    echo Pengecekan gagal. Lihat pesan di atas.
     pause
     exit /b 1
 )

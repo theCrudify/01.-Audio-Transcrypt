@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import threading
+import wave
 from functools import lru_cache
 from pathlib import Path
 from uuid import uuid4
@@ -61,6 +62,75 @@ def gpu_device() -> int | None:
     return pick_gpu_device(completed.stderr + completed.stdout)
 
 
+def parse_detected_language(whisper_log: str) -> tuple[str, float] | None:
+    """Kode bahasa & probabilitas dari output `whisper-cli -dl`, atau None jika tidak ada."""
+    match = re.search(r"auto-detected language: (\w+) \(p = ([\d.]+)\)", whisper_log)
+    return (match.group(1), float(match.group(2))) if match else None
+
+
+def _run_cli(args: list[str], timeout: int) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+    )
+
+
+def detect_language(wav_path: Path, device_args: list[str]) -> tuple[str, float] | None:
+    """Deteksi bahasa dari 30 detik pertama file (~1-2 detik). Hanya untuk peringatan, jadi kegagalan diabaikan."""
+    try:
+        completed = _run_cli(
+            [str(CLI_PATH), "-m", str(MODEL_PATH), "-f", str(wav_path), "-l", "auto", "-dl", *device_args],
+            timeout=120,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return parse_detected_language(completed.stderr + completed.stdout)
+
+
+def pick_check_points(speech_starts: list[float], duration: float, min_gap: float = 60) -> list[float]:
+    """Awal, tengah, dan akhir bagian yang berisi ucapan; titik yang berjarak < min_gap detik digabung."""
+    points: list[float] = []
+    if not speech_starts:
+        return points
+    for target in (0, duration / 2, max(0, duration - 60)):
+        start = min(speech_starts, key=lambda s: abs(s - target))
+        if all(abs(start - p) >= min_gap for p in points):
+            points.append(start)
+    return points
+
+
+def slice_wav(source: Path, target: Path, start_s: float, seconds: float = 30) -> None:
+    with wave.open(str(source), "rb") as src:
+        rate = src.getframerate()
+        src.setpos(min(src.getnframes(), int(start_s * rate)))
+        frames = src.readframes(int(seconds * rate))
+        with wave.open(str(target), "wb") as out:
+            out.setparams(src.getparams())
+            out.writeframes(frames)
+
+
+def check_languages(wav_path: Path, speech_starts: list[float], duration: float, device_args: list[str]) -> list[dict]:
+    """Deteksi bahasa di awal/tengah/akhir ucapan; whisper sendiri hanya menilai 30 detik pertama (-dl abaikan -ot)."""
+    checks = []
+    for at in pick_check_points(speech_starts, duration):
+        clip = TEMP_DIR / f"lang-check-{uuid4().hex}.wav"
+        try:
+            slice_wav(wav_path, clip, at)
+            found = detect_language(clip, device_args)
+        except (OSError, wave.Error):
+            found = None
+        finally:
+            clip.unlink(missing_ok=True)
+        if found:
+            checks.append({"at": round(at, 2), "language": found[0], "probability": round(found[1], 3)})
+    return checks
+
+
 def run_transcription(
     audio_path: Path,
     language_code: str | None,
@@ -101,39 +171,35 @@ def run_transcription(
         if vad_filter and VAD_MODEL_PATH.is_file():
             base_command += ["--vad", "-vm", str(VAD_MODEL_PATH), "-vsd", "500"]
 
+        timeout = int(os.getenv("WHISPER_TIMEOUT_SECONDS", "3600"))
         with gpu_lock:
             device = gpu_device()
             device_args = ["-ng"] if device is None else ["-dev", str(device)]
-            completed = subprocess.run(
-                base_command + device_args,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=int(os.getenv("WHISPER_TIMEOUT_SECONDS", "3600")),
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-            )
+            used_args = device_args
+            completed = _run_cli(base_command + device_args, timeout)
 
             # Jika gagal pada GPU tertentu, coba GPU 0, lalu CPU (laptop/server tanpa GPU Vulkan)
             fallbacks = [["-dev", "0"]] if device not in (None, 0) else []
             for fallback_args in fallbacks + ([["-ng"]] if device is not None else []):
                 if completed.returncode == 0:
                     break
-                completed = subprocess.run(
-                    base_command + fallback_args,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=int(os.getenv("WHISPER_TIMEOUT_SECONDS", "3600")),
-                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-                )
+                used_args = fallback_args
+                completed = _run_cli(base_command + fallback_args, timeout)
 
         if completed.returncode != 0 or not json_path.is_file():
             details = (completed.stderr or completed.stdout or "").strip()[-1200:]
             raise RuntimeError(f"whisper.cpp gagal (exit {completed.returncode}): {details}")
 
         payload = json.loads(json_path.read_text(encoding="utf-8"))
+
+        # Bahasa dipilih manual (dikunci untuk seluruh file): cek apakah ucapan di awal/tengah/akhir cocok,
+        # agar UI bisa memperingatkan salah pilih atau rekaman campuran.
+        language_checks = []
+        if language_code:
+            starts = [seg.get("offsets", {}).get("from", 0) / 1000 for seg in payload.get("transcription", []) if seg.get("text", "").strip()]
+            ends = [seg.get("offsets", {}).get("to", 0) / 1000 for seg in payload.get("transcription", [])]
+            with gpu_lock:
+                language_checks = check_languages(wav_path, starts, max(ends, default=0), used_args)
 
         diarization = None
         if diarize:
@@ -167,4 +233,4 @@ def run_transcription(
 
     language = payload.get("result", {}).get("language", language_code or "")
     duration = max((seg["end"] for seg in transcript_segments), default=0)
-    return transcript_segments, language, duration
+    return transcript_segments, language, duration, language_checks

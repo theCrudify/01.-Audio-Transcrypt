@@ -35,8 +35,16 @@ COMPUTE_TYPE = "gpu"
 
 HOST = os.getenv("HOST", "127.0.0.1")
 
+# Kode bahasa yang diterima whisper.cpp untuk -l (daftar large-v3). Sinkron dengan WHISPER_LANGS di static/index.html.
+WHISPER_LANGUAGES = frozenset(
+    "en zh de es ru ko fr ja pt tr pl ca nl ar sv it id hi fi vi he uk el ms cs ro da hu ta no th ur hr bg lt la mi "
+    "ml cy sk te fa lv bn sr az sl kn et mk br eu is hy ne mn bs kk sq sw gl mr pa si km sn yo so af oc ka be tg sd "
+    "gu am yi lo uz fo ht ps tk nn mt sa lb my bo tl mg as tt haw ln ha ba jw su yue".split()
+)
+
 # File Upload Limits
-MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "512"))
+# 0 = tanpa batas (default). Isi angka MB untuk membatasi, misalnya di mode server.
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "0"))
 MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
 
 ALLOWED_EXTENSIONS = {
