@@ -37,12 +37,21 @@ class DownloadTest(unittest.TestCase):
         cli_dir = self.tmp / "build-vulkan" / "bin" / "Release"
         with mock.patch.multiple(
             bootstrap, BASE_DIR=self.tmp, WINDOWS_CLI_DIR=cli_dir,
-            WINDOWS_BINARY_URL=bundle.as_uri(), WINDOWS_BINARY_SHA256=sha,
+            WINDOWS_BINARY_URL=bundle.as_uri(), WINDOWS_BINARY_SHA256=sha, ensure_vc_runtime=mock.DEFAULT,
         ):
             bootstrap.ensure_windows_cli()
         self.assertTrue((cli_dir / "whisper-cli.exe").is_file())
         self.assertTrue((cli_dir / "ggml-vulkan.dll").is_file())
         self.assertFalse((self.tmp / "build-vulkan" / "whisper-vulkan-windows-x64.zip").exists())
+
+    def test_vc_runtime_found_in_system_or_app_dir(self):
+        system, app = self.tmp / "System32", self.tmp / "app"
+        system.mkdir(); app.mkdir()
+        self.assertEqual(bootstrap.missing_vc_runtime(system, app), list(bootstrap.VC_RUNTIME_DLLS))
+        for name in bootstrap.VC_RUNTIME_DLLS[:3]:
+            (system / name).write_bytes(b"dll")
+        (app / "vcomp140.dll").write_bytes(b"dll")
+        self.assertEqual(bootstrap.missing_vc_runtime(system, app), [])
 
 
 if __name__ == "__main__":

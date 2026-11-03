@@ -32,7 +32,7 @@ Mengutip PyAnnote (diminta oleh pembuatnya bila dipakai dalam publikasi):
 | python-multipart | Apache-2.0 | [Kludex/python-multipart](https://github.com/Kludex/python-multipart) | |
 | NumPy | BSD-3-Clause (+ komponen 0BSD, MIT, Zlib, CC0) | [numpy/numpy](https://github.com/numpy/numpy) | |
 | PyAV | BSD-3-Clause | [PyAV-Org/PyAV](https://github.com/PyAV-Org/PyAV) | Wheel PyAV membawa **FFmpeg (LGPL-3.0+)** serta **libx264 & libx265 (GPL-2.0+)**. Aplikasi hanya memakai fungsi decode audio. Wheel ini diunduh `pip` dari PyPI saat setup; repository ini tidak menyebarkannya. Source code-nya tersedia di [FFmpeg](https://ffmpeg.org/download.html), [x264](https://code.videolan.org/videolan/x264), [x265](https://bitbucket.org/multicoreware/x265_git) dan build script PyAV. Teks lisensi tiap library ada di folder `*.dist-info` PyAV di dalam `.venv`. |
-| Runtime Microsoft Visual C++ (zip whisper Windows) | Lisensi redistribusi Microsoft | wheel `msvc-runtime` | Disertakan agar `whisper-cli.exe` jalan tanpa installer |
+| Microsoft Visual C++ Redistributable (Windows) | Lisensi Microsoft | [Microsoft](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist) | **Tidak** disertakan. Pengguna menginstallnya sendiri dari Microsoft; setup otomatis hanya mengecek keberadaannya |
 
 ## Merek dagang
 

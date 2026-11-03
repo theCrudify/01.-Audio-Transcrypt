@@ -1,84 +1,18 @@
 #!/usr/bin/env bash
-# Builds ready-to-run bundles (Python + deps + whisper.cpp + models) into dist/:
-#   dist/AudioTranscrypt-linux.tar.gz   (needs glibc >= 2.38, e.g. Ubuntu 24.04+)
-#   dist/AudioTranscrypt-windows.zip
-# Run on Linux after scripts/build_whisper.sh. Usage: bash scripts/package.sh [linux|windows|all]
+# Maintainer only: builds dist/whisper-vulkan-windows-x64.zip, the asset app/bootstrap.py downloads on Windows
+# (upload it to the GitHub Release, see README). It contains only whisper.cpp (MIT) and its license text;
+# the Microsoft VC++ runtime is NOT bundled, users install it from Microsoft (bootstrap checks for it).
 set -e
 
 cd "$(dirname "$0")/.."
-TARGET="${1:-all}"
-PBS="https://github.com/astral-sh/python-build-standalone/releases/download/20261001"
-PY_VER="3.12.15%2B20261001"
-CACHE=dist/.cache
-mkdir -p "$CACHE"
+SRC=build-vulkan/bin/Release
+[ -f "$SRC/whisper-cli.exe" ] || { echo "Missing $SRC/whisper-cli.exe"; exit 1; }
+[ -f third_party/whisper.cpp-amd/LICENSE ] || { echo "Missing third_party/whisper.cpp-amd/LICENSE (run: python3 -m app.bootstrap)"; exit 1; }
 
-DIARIZATION_MODELS="models/pyannote-segmentation-3.0.onnx models/pyannote-segmentation-3.0.LICENSE.txt models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx"
-for f in models/ggml-large-v3-turbo-q5_0.bin models/ggml-silero-v5.1.2.bin $DIARIZATION_MODELS; do
-    [ -f "$f" ] || { echo "Missing $f (run: python3 -m app.bootstrap)"; exit 1; }
-done
-
-fetch_python() {  # $1 = platform triple, $2 = destination dir
-    local tgz="$CACHE/python-$1.tar.gz"
-    [ -f "$tgz" ] || curl -fL -o "$tgz" "$PBS/cpython-$PY_VER-x86_64-$1-install_only.tar.gz"
-    tar -xzf "$tgz" -C "$2"
-}
-
-copy_common() {  # $1 = bundle dir
-    mkdir -p "$1/models"
-    cp -r app static "$1/"
-    # Redistributed third-party code/models must ship with their license texts.
-    cp THIRD_PARTY_NOTICES.md "$1/"
-    cp third_party/whisper.cpp-amd/LICENSE "$1/LICENSE-whisper.cpp.txt"
-    [ -f LICENSE ] && cp LICENSE "$1/"
-    cp models/pyannote-segmentation-3.0.LICENSE.txt "$1/models/"
-    find "$1/app" -name __pycache__ -prune -exec rm -rf {} +
-    cp models/ggml-large-v3-turbo-q5_0.bin models/ggml-silero-v5.1.2.bin $DIARIZATION_MODELS "$1/models/"
-}
-
-if [ "$TARGET" = linux ] || [ "$TARGET" = all ]; then
-    [ -x build-linux/bin/whisper-cli ] || { echo "Run scripts/build_whisper.sh first"; exit 1; }
-    OUT=dist/AudioTranscrypt-linux
-    rm -rf "$OUT" && mkdir -p "$OUT/build-linux/bin"
-    fetch_python unknown-linux-gnu "$OUT"
-    "$OUT/python/bin/python3" -m pip install -q --no-warn-script-location -r requirements/base.txt
-    copy_common "$OUT"
-    cp build-linux/bin/whisper-cli "$OUT/build-linux/bin/"
-    cat > "$OUT/start.sh" <<'EOF'
-#!/usr/bin/env bash
-cd "$(dirname "$0")"
-export APP_RELOAD=0 KMP_DUPLICATE_LIB_OK=TRUE
-exec python/bin/python3 -m app.main
-EOF
-    chmod +x "$OUT/start.sh"
-    tar -czf dist/AudioTranscrypt-linux.tar.gz -C dist AudioTranscrypt-linux
-    echo "Built dist/AudioTranscrypt-linux.tar.gz"
-fi
-
-if [ "$TARGET" = windows ] || [ "$TARGET" = all ]; then
-    OUT=dist/AudioTranscrypt-windows
-    rm -rf "$OUT" && mkdir -p "$OUT/build-vulkan/bin/Release"
-    fetch_python pc-windows-msvc "$OUT"
-    # Cross-install Windows wheels from Linux; uvloop has no Windows wheel and is skipped by uvicorn on Windows anyway.
-    grep -v '^uvicorn' requirements/base.txt > "$CACHE/requirements-win.txt"
-    echo 'uvicorn>=0.35,<1.0' >> "$CACHE/requirements-win.txt"
-    echo 'colorama' >> "$CACHE/requirements-win.txt"
-    python3 -m pip install -q --target "$OUT/python/Lib/site-packages" \
-        --platform win_amd64 --python-version 3.12 --implementation cp --only-binary=:all: \
-        -r "$CACHE/requirements-win.txt"
-    copy_common "$OUT"
-    cp build-vulkan/bin/Release/whisper-cli.exe build-vulkan/bin/Release/*.dll "$OUT/build-vulkan/bin/Release/"
-    # whisper-cli.exe is an MSVC build; ship the VC++ runtime app-locally so no redistributable install is needed.
-    python3 -m pip download -q msvc-runtime==14.44.35112 --platform win_amd64 --python-version 3.12 \
-        --only-binary=:all: --no-deps -d "$CACHE"
-    unzip -qjo "$CACHE"/msvc_runtime-14.44.35112-*.whl 'msvc_runtime-14.44.35112.data/data/Scripts/*.dll' \
-        -d "$OUT/build-vulkan/bin/Release/"
-    # Same binaries as a standalone asset for app/bootstrap.py (upload to a GitHub Release, see README).
-    rm -f dist/whisper-vulkan-windows-x64.zip
-    cp third_party/whisper.cpp-amd/LICENSE "$OUT/build-vulkan/bin/Release/LICENSE-whisper.cpp.txt"
-    (cd "$OUT/build-vulkan/bin/Release" && zip -qX -9 ../../../../whisper-vulkan-windows-x64.zip ./*)
-    echo "Built dist/whisper-vulkan-windows-x64.zip sha256=$(sha256sum dist/whisper-vulkan-windows-x64.zip | cut -d' ' -f1)"
-    printf '@echo off\r\ncd /d "%%~dp0"\r\nset "APP_RELOAD=0"\r\nset "KMP_DUPLICATE_LIB_OK=TRUE"\r\npython\\python.exe -m app.main\r\npause\r\n' > "$OUT/start.bat"
-    rm -f dist/AudioTranscrypt-windows.zip
-    (cd dist && zip -qr AudioTranscrypt-windows.zip AudioTranscrypt-windows)
-    echo "Built dist/AudioTranscrypt-windows.zip"
-fi
+STAGE=dist/.whisper-windows
+rm -rf "$STAGE" dist/whisper-vulkan-windows-x64.zip && mkdir -p "$STAGE"
+cp "$SRC"/whisper-cli.exe "$SRC"/whisper.dll "$SRC"/ggml.dll "$SRC"/ggml-base.dll "$SRC"/ggml-cpu.dll "$SRC"/ggml-vulkan.dll "$STAGE/"
+cp third_party/whisper.cpp-amd/LICENSE "$STAGE/LICENSE-whisper.cpp.txt"
+(cd "$STAGE" && zip -qX -9 ../whisper-vulkan-windows-x64.zip ./*)
+rm -rf "$STAGE"
+echo "Built dist/whisper-vulkan-windows-x64.zip sha256=$(sha256sum dist/whisper-vulkan-windows-x64.zip | cut -d' ' -f1)"

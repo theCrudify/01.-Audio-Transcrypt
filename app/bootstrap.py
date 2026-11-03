@@ -54,16 +54,19 @@ WHISPER_REPO = "https://github.com/lemonade-sdk/whisper.cpp-amd.git"
 WHISPER_COMMIT = "bd9985cf0b1ad53889ed90a71eac6830ebd341ae"
 WHISPER_SOURCE = BASE_DIR / "third_party" / "whisper.cpp-amd"
 
-# Windows: build Vulkan siap pakai (whisper-cli.exe + DLL + runtime VC++) dari GitHub Release project ini.
+# Windows: build Vulkan siap pakai (whisper-cli.exe + DLL, MIT) dari GitHub Release project ini.
 # Build sendiri di Windows butuh Visual Studio + Vulkan SDK, jadi diunduh saja.
+# Runtime Visual C++ sengaja tidak ikut di zip (lisensi Microsoft); pengguna menginstallnya dari Microsoft.
 WINDOWS_BINARY_URL = os.getenv(
     "WHISPER_WINDOWS_URL",
     "https://github.com/theCrudify/01.-Audio-Transcrypt/releases/download/whisper-vulkan-bd9985c/whisper-vulkan-windows-x64.zip",
 )
 WINDOWS_BINARY_SHA256 = os.getenv(
-    "WHISPER_WINDOWS_SHA256", "b1d40dc9735cafaa6aa7437eae2c0acae26648cf5a34d9f7ce41aab03b083408"
+    "WHISPER_WINDOWS_SHA256", "3da7193b83ef5ea0c6c419ec77cfffc40ddaa2cb13e6c551fab6752e4408ce1b"
 )
 WINDOWS_CLI_DIR = BASE_DIR / "build-vulkan" / "bin" / "Release"
+VC_REDIST_URL = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+VC_RUNTIME_DLLS = ("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll", "vcomp140.dll")
 LINUX_CLI = BASE_DIR / "build-linux" / "bin" / "whisper-cli"
 
 VENV_DIR = BASE_DIR / ".venv"
@@ -162,7 +165,42 @@ def ensure_models() -> None:
             download(url, target, sha)
 
 
+def missing_vc_runtime(system_dir: Path, app_dir: Path) -> list[str]:
+    """DLL runtime Visual C++ yang dibutuhkan whisper-cli.exe tapi tidak ada di System32 maupun folder whisper."""
+    return [name for name in VC_RUNTIME_DLLS if not (system_dir / name).is_file() and not (app_dir / name).is_file()]
+
+
+def ensure_vc_runtime() -> None:
+    """Jika runtime Visual C++ belum ada, unduh installer resminya dari Microsoft lalu jalankan (muncul prompt admin)."""
+    system_dir = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32"
+    if not missing_vc_runtime(system_dir, WINDOWS_CLI_DIR):
+        return
+    manual = f"Install manual dari {VC_REDIST_URL}, lalu jalankan ulang script ini."
+    installer = BASE_DIR / "build-vulkan" / "vc_redist.x64.exe"
+    installer.parent.mkdir(parents=True, exist_ok=True)
+    log("Microsoft Visual C++ Redistributable belum terpasang. Mengunduh installer resmi dari Microsoft ...")
+    try:
+        # shortcut: no sha256 pin because Microsoft updates this file in place; trust rests on HTTPS to microsoft.com.
+        request = urllib.request.Request(VC_REDIST_URL, headers={"User-Agent": "AudioTranscrypt-setup"})
+        with urllib.request.urlopen(request, timeout=60) as response, installer.open("wb") as out:
+            shutil.copyfileobj(response, out)
+    except OSError as exc:
+        installer.unlink(missing_ok=True)
+        raise SetupError(f"Gagal mengunduh installer Visual C++: {exc}\n        {manual}") from exc
+    log("Menginstall Visual C++ Redistributable (setujui prompt administrator yang muncul) ...")
+    try:
+        code = subprocess.run([str(installer), "/install", "/passive", "/norestart"]).returncode
+    except OSError as exc:
+        raise SetupError(f"Installer Visual C++ gagal dijalankan: {exc}\n        {manual}") from exc
+    finally:
+        installer.unlink(missing_ok=True)
+    # 0 = ok, 3010 = ok tapi perlu restart, 1638 = versi lebih baru sudah ada.
+    if code not in (0, 3010, 1638) or missing_vc_runtime(system_dir, WINDOWS_CLI_DIR):
+        raise SetupError(f"Install Visual C++ Redistributable belum berhasil (kode {code}).\n        {manual}")
+
+
 def ensure_windows_cli() -> None:
+    ensure_vc_runtime()
     if (WINDOWS_CLI_DIR / "whisper-cli.exe").is_file():
         return
     archive = BASE_DIR / "build-vulkan" / "whisper-vulkan-windows-x64.zip"

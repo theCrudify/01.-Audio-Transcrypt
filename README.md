@@ -4,22 +4,21 @@ Aplikasi web untuk mengubah rekaman audio/video menjadi teks **sepenuhnya di kom
 
 ## Mulai cepat
 
-Repository ini hanya berisi kode. Model AI, whisper.cpp, dan library Python **disiapkan otomatis saat aplikasi pertama kali dijalankan** (detailnya di [Instalasi](#instalasi)).
+Cukup clone lalu jalankan **satu script**. Semua yang dibutuhkan disiapkan otomatis pada run pertama: Python (Windows), paket sistem (Linux), whisper.cpp, library Python, dan model AI. Detailnya di [Instalasi](#instalasi).
 
 **Linux (Debian/Ubuntu)**
 
 ```bash
-sudo apt install python3 python3-venv git build-essential cmake libvulkan-dev glslc mesa-vulkan-drivers
 git clone https://github.com/theCrudify/01.-Audio-Transcrypt.git
 cd 01.-Audio-Transcrypt
 bash scripts/start_app.sh
 ```
 
+Script akan meminta password `sudo` sekali untuk menginstall paket sistem yang belum ada.
+
 **Windows**
 
-1. Install **Python 3.10+** dari [python.org](https://www.python.org/downloads/), centang *Add python.exe to PATH*.
-2. Clone repository ini, atau di GitHub pilih *Code → Download ZIP* lalu ekstrak.
-3. Double-click `scripts\start_app.bat`.
+Clone repository ini (atau di GitHub pilih *Code → Download ZIP* lalu ekstrak), lalu double-click `scripts\start_app.bat`. Jika muncul prompt administrator untuk *Microsoft Visual C++ Redistributable*, klik **Yes**.
 
 **Lalu** buka http://127.0.0.1:8000, tunggu badge **Siap**, dan upload file. Hentikan server dengan `Ctrl+C`.
 
@@ -61,13 +60,15 @@ Run pertama butuh internet dan beberapa menit untuk menyiapkan file (±650 MB). 
 
 ### Prasyarat
 
-Yang perlu diinstall sendiri hanya ini; sisanya disiapkan otomatis.
+Satu-satunya syarat: **internet saat run pertama**. Prasyarat berikut diinstall otomatis oleh launcher jika belum ada, dari sumber resminya:
 
-| | Windows | Linux (Debian/Ubuntu) |
+| | Windows (`start_app.bat`) | Linux Debian/Ubuntu (`start_app.sh`) |
 |---|---|---|
-| Python 3.10+ | [python.org](https://www.python.org/downloads/) (centang *Add python.exe to PATH*). Anaconda juga bisa, tapi tidak wajib. | `sudo apt install python3 python3-venv` |
-| Tool build whisper.cpp | Tidak perlu: whisper.cpp diunduh siap pakai | `sudo apt install git build-essential cmake libvulkan-dev glslc mesa-vulkan-drivers` |
-| Internet | Hanya saat run pertama | Hanya saat run pertama |
+| Python 3.10+ | Python 3.12 dari python.org lewat `winget` (per pengguna, tanpa admin). Python yang sudah ada (python.org, Anaconda, `py`) langsung dipakai. | `python3` bawaan; `python3-venv` lewat `apt` |
+| Tool build whisper.cpp | Tidak perlu: whisper.cpp diunduh siap pakai | `git build-essential cmake libvulkan-dev glslc mesa-vulkan-drivers` lewat `apt` (minta password `sudo`) |
+| Microsoft Visual C++ Redistributable x64 | Installer resmi dari Microsoft (minta izin administrator) | Tidak perlu |
+
+Install manual hanya perlu jika otomatisnya gagal, misalnya Windows tanpa `winget` (unduh Python dari [python.org](https://www.python.org/downloads/), centang *Add python.exe to PATH*) atau Linux selain Debian/Ubuntu (install padanan paket di atas lewat package manager distro).
 
 ### Yang disiapkan otomatis
 
@@ -76,7 +77,7 @@ Yang perlu diinstall sendiri hanya ini; sisanya disiapkan otomatis.
 | File / folder | Ukuran | Sumber | Fungsi |
 |---|---|---|---|
 | `.venv/` | ±270 MB | PyPI (`requirements/base.txt`) | Library Python. Diinstall ulang otomatis jika `requirements/base.txt` berubah |
-| `build-vulkan/` (Windows) | 19 MB | [GitHub Release project ini](https://github.com/theCrudify/01.-Audio-Transcrypt/releases) | whisper.cpp siap pakai |
+| `build-vulkan/` (Windows) | 18 MB | [GitHub Release project ini](https://github.com/theCrudify/01.-Audio-Transcrypt/releases) | whisper.cpp siap pakai |
 | `build-linux/` (Linux) | – | Source [whisper.cpp-amd](https://github.com/lemonade-sdk/whisper.cpp-amd) commit `bd9985c` | whisper.cpp di-build di komputer itu (beberapa menit) |
 | `models/ggml-large-v3-turbo-q5_0.bin` | 574 MB | Hugging Face `ggerganov/whisper.cpp` | Model transkripsi |
 | `models/ggml-silero-v5.1.2.bin` | 0,9 MB | Hugging Face `ggml-org/whisper-vad` | Model VAD (melewati hening) |
@@ -86,7 +87,6 @@ Yang perlu diinstall sendiri hanya ini; sisanya disiapkan otomatis.
 - **Tidak perlu mengunduh apa pun secara manual**, dan tidak perlu login ke Hugging Face atau situs lain.
 - **Hanya sekali.** File yang sudah ada dilewati, jadi run berikutnya langsung start.
 - **Aman dari unduhan rusak.** Setiap file dicek sha256-nya. Unduhan yang terputus dibuang; jalankan ulang script untuk mengunduh lagi dari awal.
-- **Tidak menjalankan `sudo`.** Jika tool sistem belum ada, script berhenti dan menampilkan perintah `apt` yang perlu dijalankan.
 - **Komputer tanpa internet:** salin folder `models/` (dan `.venv/` atau `build-*/` dari OS yang sama) dari komputer lain.
 - Jika `WHISPER_CLI` atau `WHISPER_MODEL_PATH` diisi, bagian itu tidak disiapkan.
 
@@ -356,12 +356,12 @@ Baca bagian ini sebelum memakai hasilnya untuk catatan penting.
 **`[setup] GAGAL: ...` saat pertama dijalankan**
 Pesan di bawahnya menyebutkan penyebab dan perbaikannya. Yang umum:
 - *Gagal mengunduh*: cek koneksi internet, lalu jalankan ulang.
-- *Tool berikut belum terpasang* (Linux): jalankan perintah `sudo apt install ...` yang ditampilkan.
-- *Butuh python3-venv* (Linux): `sudo apt install python3-venv`.
+- *Tool berikut belum terpasang* / *Butuh python3-venv* (Linux selain Debian/Ubuntu): install paket yang disebutkan lewat package manager distro.
+- *Install Visual C++ Redistributable belum berhasil* (Windows): prompt administrator ditolak atau gagal. Install dari link yang ditampilkan, lalu jalankan ulang.
 - *Binary Windows 404*: rilis whisper.cpp Windows belum tersedia di GitHub (lihat [Untuk maintainer](#untuk-maintainer-binary-whisper-windows)).
 
-**Windows: `python` tidak dikenali**
-Install Python dari python.org dan centang *Add python.exe to PATH*, lalu buka ulang jendela terminal.
+**Windows: `Python tidak ditemukan dan tidak bisa diinstall otomatis`**
+PC tidak punya `winget` (Windows lama) atau instalasinya gagal. Install Python dari python.org, centang *Add python.exe to PATH*, lalu jalankan ulang `start_app.bat`.
 
 **Status tidak pernah "Siap" / `503 Service Unavailable`**
 Jalankan `.venv/bin/python -m app.verify` (Windows: `.venv\Scripts\python -m app.verify`) untuk melihat file yang hilang.
@@ -399,7 +399,7 @@ Bagian ini hanya untuk pemilik repository; pengguna biasa bisa melewatinya.
 
 Di Windows, setup otomatis mengunduh `whisper-cli.exe` siap pakai dari GitHub Release, karena build whisper.cpp di Windows butuh Visual Studio + Vulkan SDK. Siapkan sekali, dan ulangi setiap kali versi whisper.cpp berubah (dijalankan di Linux):
 
-1. Jalankan `bash scripts/package.sh windows`. Hasilnya `dist/whisper-vulkan-windows-x64.zip` (±19 MB) berisi `whisper-cli.exe`, DLL, runtime Visual C++, dan lisensi whisper.cpp. Perintah ini juga membuat bundel lain di `dist/` untuk keperluan sendiri; bundel itu tidak dibagikan.
+1. Jalankan `bash scripts/package.sh`. Hasilnya `dist/whisper-vulkan-windows-x64.zip` (±18 MB), berisi **hanya** `whisper-cli.exe` + DLL whisper.cpp/ggml (MIT) dan teks lisensinya. DLL runtime Microsoft sengaja tidak disertakan; pengguna menginstallnya sendiri dari Microsoft.
 2. Buat rilis di https://github.com/theCrudify/01.-Audio-Transcrypt/releases/new dengan tag **`whisper-vulkan-bd9985c`**, upload zip tadi, lalu publish.
 3. sha256 zip berubah setiap kali dibuat ulang. Pastikan `WINDOWS_BINARY_SHA256` di `app/bootstrap.py` sama dengan sha256 file yang **di-upload**.
 
