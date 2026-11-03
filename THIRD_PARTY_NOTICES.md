@@ -2,7 +2,7 @@
 
 Kode project ini sendiri berlisensi MIT (lihat [LICENSE](LICENSE)). Komponen di bawah ini milik pembuatnya masing-masing.
 
-Aplikasi ini merangkai komponen open-source buatan pihak lain. Repository ini **tidak** menyimpan model atau binary mereka; semuanya diunduh dari sumber resminya saat [setup otomatis](README.md#setup-otomatis-saat-pertama-dijalankan), dan tunduk pada lisensinya masing-masing. Satu-satunya yang disebarkan ulang adalah zip binary whisper.cpp untuk Windows di GitHub Release, dan teks lisensinya ikut disertakan di dalam zip itu.
+Aplikasi ini merangkai komponen open-source buatan pihak lain. Repository ini **tidak** menyimpan model atau binary mereka; semuanya diunduh dari sumber resminya saat [setup otomatis](README.md#yang-disiapkan-otomatis), dan tunduk pada lisensinya masing-masing. Satu-satunya yang disebarkan ulang adalah zip binary whisper.cpp untuk Windows di GitHub Release, dan teks lisensinya ikut disertakan di dalam zip itu.
 
 Terima kasih kepada semua pembuatnya.
 

@@ -170,7 +170,7 @@ def ensure_windows_cli() -> None:
         download(WINDOWS_BINARY_URL, archive, WINDOWS_BINARY_SHA256)
     except SetupError as exc:
         raise SetupError(
-            f"{exc}\n        Pastikan rilis GitHub 'whisper-vulkan-bd9985c' sudah ada (lihat README: Binary whisper untuk Windows)."
+            f"{exc}\n        Pastikan rilis GitHub 'whisper-vulkan-bd9985c' sudah ada (lihat README: Untuk maintainer: binary whisper Windows)."
         ) from exc
     WINDOWS_CLI_DIR.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive) as bundle:
