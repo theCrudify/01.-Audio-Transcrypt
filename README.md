@@ -2,6 +2,8 @@
 
 Aplikasi web untuk mengubah rekaman audio/video menjadi teks **sepenuhnya di komputer sendiri**, tanpa cloud. Memakai [whisper.cpp](https://github.com/ggerganov/whisper.cpp) dengan akselerasi GPU Vulkan, berjalan di **Windows dan Linux**, dan bisa dipakai sendiri di laptop maupun bersama satu kelompok belajar lewat jaringan lokal.
 
+![Demo: upload rekaman, pilih bahasa, lalu hasil transkrip bertimestamp dengan label pembicara](docs/demo.gif)
+
 ## Mulai cepat
 
 Cukup clone lalu jalankan **satu script**. Pada run pertama, semua yang dibutuhkan diunduh dan diinstall otomatis: Python (Windows), paket sistem (Linux), whisper.cpp dengan GPU Vulkan, library Python, dan model AI. Setelah itu server aplikasi langsung berjalan dan siap dipakai lewat browser.
@@ -306,6 +308,7 @@ app/
   verify.py          Cek dependensi, binary, dan model
   bootstrap.py       Setup otomatis (hanya library standar Python)
 static/              Frontend (index.html)
+docs/                GIF demo untuk README
 tests/               Unit test
 requirements/
   base.txt           Dependensi Python
