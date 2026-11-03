@@ -1,6 +1,6 @@
 # Local AI Transcription Studio
 
-Aplikasi web untuk mentranskrip audio dan video **sepenuhnya di komputer sendiri** (tanpa cloud), memakai [whisper.cpp](https://github.com/ggerganov/whisper.cpp) dengan akselerasi GPU Vulkan. Berjalan di **Windows dan Linux**, di laptop pribadi maupun sebagai server untuk satu tim.
+Aplikasi web untuk mentranskrip audio dan video **sepenuhnya di komputer sendiri** (tanpa cloud), memakai [whisper.cpp](https://github.com/ggerganov/whisper.cpp) dengan akselerasi GPU Vulkan. Berjalan di **Windows dan Linux**, di laptop sendiri maupun sebagai server untuk satu kelompok belajar atau komunitas.
 
 ## Mulai cepat
 
@@ -89,7 +89,7 @@ Tidak mau install Python? Pakai [paket siap pakai](#cara-1--paket-siap-pakai-tan
 - Bedakan pembicara (*Pembicara 1, 2, …*) secara lokal, tanpa login/token; jumlah pembicara bisa ditebak otomatis atau diisi sendiri.
 - Tidak butuh Anaconda, FFmpeg, atau koneksi internet saat dipakai.
 
-Sebelum dipakai untuk pekerjaan penting, baca [Cakupan & batasan](#cakupan--batasan).
+Sebelum dipakai untuk catatan penting, baca [Cakupan & batasan](#cakupan--batasan).
 
 ## Pilih cara pakai
 
@@ -102,6 +102,17 @@ Sebelum dipakai untuk pekerjaan penting, baca [Cakupan & batasan](#cakupan--bata
 ## Cara 1 — Paket siap pakai (tanpa install)
 
 Paket sudah berisi Python, semua library, whisper.cpp, dan model. **Tidak perlu Anaconda, Python, atau pip.**
+
+### Unduh paketnya
+
+Paket ada di halaman **[Releases](https://github.com/theCrudify/01.-Audio-Transcrypt/releases/latest)**, bagian *Assets*:
+
+| File | Untuk | Ukuran |
+|---|---|---|
+| `AudioTranscrypt-windows.zip` | Windows 10/11 64-bit | ±700 MB |
+| `AudioTranscrypt-linux.tar.gz` | Linux x86-64 (glibc 2.38+) | ±720 MB |
+
+> Tombol hijau **Code → Download ZIP** di halaman utama repository **bukan** paket ini. Isinya hanya source code (±200 KB). Untuk itu, ikuti [Cara 2](#cara-2--dari-source-code).
 
 ### Windows
 
@@ -209,7 +220,7 @@ Pengguna lain membuka `http://<IP-server>:8000` (cek IP dengan `hostname -I` di 
 
 Catatan:
 - Transkripsi diproses **bergantian** (satu per satu di GPU) agar VRAM tidak habis; permintaan lain menunggu giliran.
-- **Tidak ada login.** Jalankan hanya di jaringan tepercaya (LAN kantor/VPN), jangan langsung ke internet.
+- **Tidak ada login.** Jalankan hanya di jaringan tepercaya (misalnya Wi-Fi ruang kelas atau jaringan rumah), jangan langsung ke internet.
 
 ## Menggunakan aplikasi
 
@@ -341,10 +352,10 @@ Model PyAnnote resmi di Hugging Face mewajibkan login. sherpa-onnx membagikan ve
 **Yang perlu diketahui:**
 - **Tebakan otomatis tetap bisa meleset**, terutama untuk banyak orang atau suara mirip. Bila tahu jumlahnya, isi angkanya. Batas bawaan `DIARIZATION_THRESHOLD=1.1`: lebih kecil = lebih banyak pembicara (1.0 mulai memecah satu orang jadi dua; 1.2 mulai menggabungkan orang berbeda).
 - **Jawaban sangat pendek masih sering tertukar** (±63% benar), karena potongan suara < 2 detik terlalu sedikit untuk dikenali.
-- **Berjalan di CPU**, setelah transkripsi selesai. Waktu tambahan ±8 detik per menit audio (rapat 56 menit: +7,7 menit, diukur di Ryzen 5 7535HS, 8 thread). Library ini tidak punya jalur GPU AMD di Linux.
-- **Pecahan pembicara digabung** (mode *Otomatis*). Rekaman rapat yang bising/bergema membuat potongan kecil terbaca sebagai orang baru (rapat uji 56 menit: 27 "pembicara", 21 di antaranya < 40 detik). Pembicara dengan total bicara < 2% (`DIARIZATION_MIN_SHARE=0.02`) digabung ke orang yang bicara tepat sebelum/sesudahnya, sehingga rapat itu menjadi 6 pembicara. Akibatnya, orang yang hanya bicara sangat sedikit (mis. < 1 menit dalam rapat 1 jam) bisa ikut tergabung. Mengisi *Jumlah pembicara* menonaktifkan aturan ini.
+- **Berjalan di CPU**, setelah transkripsi selesai. Waktu tambahan ±8 detik per menit audio (rekaman diskusi 56 menit: +7,7 menit, diukur di Ryzen 5 7535HS, 8 thread). Library ini tidak punya jalur GPU AMD di Linux.
+- **Pecahan pembicara digabung** (mode *Otomatis*). Rekaman diskusi yang bising/bergema membuat potongan kecil terbaca sebagai orang baru (diskusi uji 56 menit: 27 "pembicara", 21 di antaranya < 40 detik). Pembicara dengan total bicara < 2% (`DIARIZATION_MIN_SHARE=0.02`) digabung ke orang yang bicara tepat sebelum/sesudahnya, sehingga diskusi itu menjadi 6 pembicara. Akibatnya, orang yang hanya bicara sangat sedikit (mis. < 1 menit dalam diskusi 1 jam) bisa ikut tergabung. Mengisi *Jumlah pembicara* menonaktifkan aturan ini.
 - **Label anonim**, bukan nama asli. Nomor diberikan sesuai urutan orang pertama kali bicara.
-- Benchmark memakai rekaman bacaan bahasa Inggris yang bersih. Rekaman rapat (mikrofon jauh, gema, saling potong) umumnya lebih sulit.
+- Benchmark memakai rekaman bacaan bahasa Inggris yang bersih. Rekaman diskusi atau kelas (mikrofon jauh, gema, saling potong) umumnya lebih sulit.
 
 ## Membuat paket siap pakai
 
@@ -368,16 +379,21 @@ Target `windows` juga menghasilkan `dist/whisper-vulkan-windows-x64.zip` (±19 M
 
 Paket berisi **salinan** `app/` dan `static/` saat dibuat. Setiap ada perubahan kode, jalankan ulang `package.sh`, karena paket lama tidak ikut ter-update.
 
-### Merilis binary Windows untuk setup otomatis (maintainer)
+### Merilis di GitHub Releases (maintainer)
 
-Pengguna Windows yang clone dari git mengunduh binary whisper dari GitHub Release, bukan dari repository. Langkahnya (sekali, dan setiap kali binary whisper berubah):
+File paket terlalu besar untuk repository, jadi dibagikan lewat **GitHub Releases** (maksimal 2 GB per file). Ada dua rilis:
 
-1. Buat rilis di https://github.com/theCrudify/01.-Audio-Transcrypt/releases/new dengan tag **`whisper-vulkan-bd9985c`**.
-2. Upload `dist/whisper-vulkan-windows-x64.zip` sebagai asset rilis, lalu publish.
-3. Repository harus **public**. Dari repo private, unduhan tanpa login akan gagal (404).
-4. Jika zip dibuat ulang, sha256-nya berubah. Perbarui `WINDOWS_BINARY_SHA256` (dan tag di `WINDOWS_BINARY_URL` jika versi whisper berubah) di `app/bootstrap.py` dengan nilai yang dicetak `package.sh`.
+**1. Paket siap pakai** (untuk [Cara 1](#cara-1--paket-siap-pakai-tanpa-install)), dibuat ulang setiap ada versi baru:
+1. Jalankan `bash scripts/package.sh`.
+2. Buka https://github.com/theCrudify/01.-Audio-Transcrypt/releases/new, buat tag versi (misalnya **`v1.0.0`**), isi judul dan catatan perubahan.
+3. Upload `dist/AudioTranscrypt-windows.zip` dan `dist/AudioTranscrypt-linux.tar.gz` sebagai *assets*, lalu **Publish release**.
 
-Tanpa rilis ini, setup di Windows berhenti dengan pesan untuk menyalin folder `build-vulkan\` dari paket siap pakai. Lokasi lain bisa dipakai lewat env `WHISPER_WINDOWS_URL` + `WHISPER_WINDOWS_SHA256`.
+**2. Binary whisper Windows** (untuk [setup otomatis](#setup-otomatis-saat-pertama-dijalankan) di Windows), cukup sekali dan setiap kali binary whisper berubah:
+1. Buat rilis dengan tag **`whisper-vulkan-bd9985c`**.
+2. Upload `dist/whisper-vulkan-windows-x64.zip`, lalu publish.
+3. Zip ini dibuat ulang setiap `package.sh` dijalankan, sehingga sha256-nya berubah. Setelah upload, pastikan `WINDOWS_BINARY_SHA256` di `app/bootstrap.py` sama dengan nilai yang dicetak `package.sh` untuk file yang **di-upload**.
+
+Repository harus **public**. Dari repo private, unduhan tanpa login gagal (404). Tanpa rilis kedua, setup di Windows berhenti dengan pesan untuk menyalin folder `build-vulkan\` dari paket siap pakai. Lokasi lain bisa dipakai lewat env `WHISPER_WINDOWS_URL` + `WHISPER_WINDOWS_SHA256`.
 
 ## API
 
@@ -391,7 +407,7 @@ Tanpa rilis ini, setup di Windows berhenti dengan pesan untuk menyalin folder `b
 Contoh:
 
 ```bash
-curl -F file=@rapat.mp3 -F language=id http://127.0.0.1:8000/api/transcribe
+curl -F file=@diskusi.mp3 -F language=id http://127.0.0.1:8000/api/transcribe
 ```
 
 ## Struktur project
@@ -424,7 +440,7 @@ dist/                Hasil package.sh                (tidak di-commit)
 
 ## Cakupan & batasan
 
-Bagian ini menjelaskan apa yang memang ditangani aplikasi, apa yang tidak, dan batasan teknis yang perlu diketahui sebelum dipakai untuk pekerjaan penting.
+Bagian ini menjelaskan apa yang memang ditangani aplikasi, apa yang tidak, dan batasan teknis yang perlu diketahui sebelum dipakai untuk catatan penting.
 
 ### Termasuk cakupan
 
@@ -432,7 +448,7 @@ Bagian ini menjelaskan apa yang memang ditangani aplikasi, apa yang tidak, dan b
 - **Fokus bahasa Indonesia & Inggris**, termasuk bahasa Indonesia yang bercampur istilah Inggris. ±100 bahasa lain tersedia lewat pencarian, dengan kualitas yang berbeda-beda per bahasa.
 - **Terjemahan langsung ke bahasa Inggris.**
 - **Ekspor TXT & SRT**, salin teks, dan klik timestamp untuk memutar bagian itu.
-- **Pemakaian pribadi** di satu komputer, atau **server LAN tepercaya** untuk tim kecil.
+- **Pemakaian pribadi** di satu komputer, atau **server LAN tepercaya** untuk kelompok belajar atau komunitas kecil.
 - **Privasi:** file upload dan WAV sementara dihapus setelah diproses; hasil transkrip hanya ada di browser pengguna, tidak disimpan di server.
 - **UI ID/EN**, responsif untuk HP, tablet, dan laptop, dengan tema terang/gelap.
 
@@ -475,8 +491,8 @@ Bagian ini menjelaskan apa yang memang ditangani aplikasi, apa yang tidak, dan b
 
 - Kode project ini berlisensi **MIT** (lihat [LICENSE](LICENSE)): boleh dipakai, diubah, dan dibagikan, termasuk untuk keperluan komersial, asal pemberitahuan hak cipta dan lisensinya tetap disertakan.
 - Komponen pihak ketiga (model AI, whisper.cpp, sherpa-onnx, library Python) beserta lisensinya tercantum di [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Semuanya MIT, Apache-2.0, atau BSD, sehingga boleh dipakai termasuk untuk keperluan komersial, dengan syarat atribusi dan teks lisensinya disertakan saat disebarkan ulang. `package.sh` otomatis menyertakannya di paket portable.
-- Merekam rapat berarti memproses data pribadi (suara orang lain). Minta izin semua peserta sebelum merekam, jelaskan tujuannya, dan hapus rekaman setelah tidak diperlukan. Di Indonesia, ini sejalan dengan UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Aplikasi ini menghapus file upload dan WAV sementara setelah diproses, dan tidak menyimpan hasil transkrip di server.
-- Jika transkrip diolah lagi di layanan lain (misalnya chatbot AI untuk merangkum), teksnya ikut keluar dari komputer. Pastikan itu diizinkan oleh kebijakan perusahaan dan perjanjian kerahasiaan (NDA) dengan client.
+- Merekam kelas, seminar, atau diskusi berarti memproses data pribadi (suara orang lain). Minta izin pembicara dan peserta sebelum merekam, jelaskan tujuannya, dan hapus rekaman setelah tidak diperlukan. Di Indonesia, ini sejalan dengan UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Aplikasi ini menghapus file upload dan WAV sementara setelah diproses, dan tidak menyimpan hasil transkrip di server.
+- Jika transkrip diolah lagi di layanan lain (misalnya chatbot AI untuk merangkum), teksnya ikut keluar dari komputer. Pastikan penyelenggara dan pembicara mengizinkannya, terutama untuk materi tertutup seperti pelatihan berbayar.
 
 ## Troubleshooting
 
@@ -485,7 +501,7 @@ Pesan di bawahnya menyebutkan penyebab dan perbaikannya. Yang umum:
 - *Gagal mengunduh*: cek koneksi internet, lalu jalankan ulang (unduhan yang terputus tidak dipakai).
 - *Tool berikut belum terpasang* (Linux): jalankan perintah `sudo apt install ...` yang ditampilkan.
 - *Butuh python3-venv* (Linux): `sudo apt install python3-venv`.
-- *Binary Windows 404*: rilis GitHub belum dibuat atau repo masih private (lihat [Merilis binary Windows](#merilis-binary-windows-untuk-setup-otomatis-maintainer)). Sementara itu, salin folder `build-vulkan\` dari paket siap pakai.
+- *Binary Windows 404*: rilis GitHub belum dibuat atau repo masih private (lihat [Merilis di GitHub Releases](#merilis-di-github-releases-maintainer)). Sementara itu, salin folder `build-vulkan\` dari paket siap pakai.
 
 **Status tidak pernah "Siap" / `503 Service Unavailable`**
 Jalankan `.venv/bin/python -m app.verify` (Windows: `.venv\Scripts\python -m app.verify`) untuk melihat file mana yang hilang (binary whisper atau model).

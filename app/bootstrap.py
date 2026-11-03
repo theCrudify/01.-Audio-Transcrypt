@@ -61,7 +61,7 @@ WINDOWS_BINARY_URL = os.getenv(
     "https://github.com/theCrudify/01.-Audio-Transcrypt/releases/download/whisper-vulkan-bd9985c/whisper-vulkan-windows-x64.zip",
 )
 WINDOWS_BINARY_SHA256 = os.getenv(
-    "WHISPER_WINDOWS_SHA256", "28ae4975f4289e12026e54c17d79d6e215287d28e18ffbc6c5ae9f5e920c479b"
+    "WHISPER_WINDOWS_SHA256", "b1d40dc9735cafaa6aa7437eae2c0acae26648cf5a34d9f7ce41aab03b083408"
 )
 WINDOWS_CLI_DIR = BASE_DIR / "build-vulkan" / "bin" / "Release"
 LINUX_CLI = BASE_DIR / "build-linux" / "bin" / "whisper-cli"

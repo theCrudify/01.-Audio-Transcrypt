@@ -90,7 +90,7 @@ def speaker_turns(wav_path: Path, num_speakers: int = 0) -> list[tuple[float, fl
 Turn = tuple[float, float, int]  # (mulai, selesai, nomor pembicara mentah)
 
 # Mode Otomatis: "pembicara" dengan total bicara < 2% dianggap pecahan (gema, bising, saling potong) dan digabung.
-# Rapat uji 56 menit: tanpa ini 27 pembicara (21 di antaranya < 40 detik); dengan ini 6.
+# Diskusi uji 56 menit: tanpa ini 27 pembicara (21 di antaranya < 40 detik); dengan ini 6.
 MIN_SPEAKER_SHARE = float(os.getenv("DIARIZATION_MIN_SHARE", "0.02"))
 
 
