@@ -25,7 +25,7 @@ Mengutip PyAnnote (diminta oleh pembuatnya bila dipakai dalam publikasi):
 
 | Komponen | Lisensi | Sumber | Catatan |
 |---|---|---|---|
-| whisper.cpp / ggml (fork `lemonade-sdk/whisper.cpp-amd`, commit `bd9985c`) | MIT | [lemonade-sdk/whisper.cpp-amd](https://github.com/lemonade-sdk/whisper.cpp-amd) | Di-build dari source (Linux) atau binary di GitHub Release (Windows). Teks lisensi: `LICENSE-whisper.cpp.txt` di dalam zip |
+| whisper.cpp / ggml (fork `lemonade-sdk/whisper.cpp-amd`, commit `bd9985c`) | MIT | [lemonade-sdk/whisper.cpp-amd](https://github.com/lemonade-sdk/whisper.cpp-amd) | Di-build dari source (Linux) atau binary di GitHub Release (Windows). Jika rilis itu tidak ada, Windows mengunduh build CPU resmi langsung dari [ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp/releases) (MIT). Teks lisensi: `LICENSE-whisper.cpp.txt` di dalam zip |
 | sherpa-onnx | Apache-2.0 | [k2-fsa/sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | Termasuk ONNX Runtime (MIT, Microsoft) |
 | FastAPI | MIT | [fastapi/fastapi](https://github.com/fastapi/fastapi) | |
 | Uvicorn | BSD-3-Clause | [encode/uvicorn](https://github.com/encode/uvicorn) | |

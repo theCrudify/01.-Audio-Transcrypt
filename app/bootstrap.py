@@ -65,6 +65,9 @@ WINDOWS_BINARY_SHA256 = os.getenv(
     "WHISPER_WINDOWS_SHA256", "3da7193b83ef5ea0c6c419ec77cfffc40ddaa2cb13e6c551fab6752e4408ce1b"
 )
 WINDOWS_CLI_DIR = BASE_DIR / "build-vulkan" / "bin" / "Release"
+# Cadangan jika rilis Vulkan di atas belum ada: build CPU resmi dari ggml-org (tidak disebarkan ulang oleh project ini).
+OFFICIAL_CPU_URL = "https://github.com/ggml-org/whisper.cpp/releases/download/b5454/whisper-bin-x64.zip"
+OFFICIAL_CPU_SHA256 = "6ba69e3482d7826214f90a6a9c84ca07782aec1e1d0c6a7c30c994fd5d816ccb"
 VC_REDIST_URL = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
 VC_RUNTIME_DLLS = ("vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll", "vcomp140.dll")
 LINUX_CLI = BASE_DIR / "build-linux" / "bin" / "whisper-cli"
@@ -199,22 +202,40 @@ def ensure_vc_runtime() -> None:
         raise SetupError(f"Install Visual C++ Redistributable belum berhasil (kode {code}).\n        {manual}")
 
 
+def extract_cli(archive: Path, target_dir: Path) -> None:
+    """Ambil whisper-cli.exe + DLL-nya dari zip (zip resmi menaruhnya di folder Release/), buang sisanya."""
+    target_dir.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive) as bundle:
+        for member in bundle.namelist():
+            name = member.rsplit("/", 1)[-1]
+            if name == "whisper-cli.exe" or name.endswith(".dll") or name.startswith("LICENSE"):
+                (target_dir / name).write_bytes(bundle.read(member))
+    archive.unlink()
+
+
 def ensure_windows_cli() -> None:
     ensure_vc_runtime()
-    if (WINDOWS_CLI_DIR / "whisper-cli.exe").is_file():
+    cpu_marker = WINDOWS_CLI_DIR / "CPU_ONLY.txt"
+    has_cli = (WINDOWS_CLI_DIR / "whisper-cli.exe").is_file()
+    if has_cli and not cpu_marker.is_file():
         return
     archive = BASE_DIR / "build-vulkan" / "whisper-vulkan-windows-x64.zip"
     try:
         download(WINDOWS_BINARY_URL, archive, WINDOWS_BINARY_SHA256)
-    except SetupError as exc:
-        raise SetupError(
-            f"{exc}\n        Pastikan rilis GitHub 'whisper-vulkan-bd9985c' sudah ada (lihat README: Untuk maintainer: binary whisper Windows)."
-        ) from exc
-    WINDOWS_CLI_DIR.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(archive) as bundle:
-        bundle.extractall(WINDOWS_CLI_DIR)
-    archive.unlink()
-    log("whisper-cli Windows siap.")
+    except SetupError:
+        if has_cli:
+            return  # tetap pakai build CPU; dicoba lagi di run berikutnya
+        log("Build Vulkan (GPU) belum tersedia. Memakai whisper.cpp resmi versi CPU (lebih lambat) ...")
+        archive = BASE_DIR / "build-vulkan" / "whisper-bin-x64.zip"
+        download(OFFICIAL_CPU_URL, archive, OFFICIAL_CPU_SHA256)
+        extract_cli(archive, WINDOWS_CLI_DIR)
+        cpu_marker.write_text("whisper.cpp resmi versi CPU; diganti build Vulkan otomatis saat tersedia.\n")
+        log("whisper-cli Windows (CPU) siap.")
+        return
+    if WINDOWS_CLI_DIR.is_dir():
+        shutil.rmtree(WINDOWS_CLI_DIR)  # buang DLL build CPU agar tidak tercampur
+    extract_cli(archive, WINDOWS_CLI_DIR)
+    log("whisper-cli Windows (Vulkan GPU) siap.")
 
 
 def ensure_linux_cli() -> None:

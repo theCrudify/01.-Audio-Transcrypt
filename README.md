@@ -77,7 +77,7 @@ Install manual hanya perlu jika otomatisnya gagal, misalnya Windows tanpa `winge
 | File / folder | Ukuran | Sumber | Fungsi |
 |---|---|---|---|
 | `.venv/` | ±270 MB | PyPI (`requirements/base.txt`) | Library Python. Diinstall ulang otomatis jika `requirements/base.txt` berubah |
-| `build-vulkan/` (Windows) | 18 MB | [GitHub Release project ini](https://github.com/theCrudify/01.-Audio-Transcrypt/releases) | whisper.cpp siap pakai |
+| `build-vulkan/` (Windows) | 18 MB | [GitHub Release project ini](https://github.com/theCrudify/01.-Audio-Transcrypt/releases) | whisper.cpp siap pakai dengan GPU Vulkan. Jika rilis ini tidak tersedia, dipakai [whisper.cpp resmi](https://github.com/ggml-org/whisper.cpp/releases) versi CPU (9 MB, lebih lambat) dan setup mencoba versi GPU lagi di run berikutnya |
 | `build-linux/` (Linux) | – | Source [whisper.cpp-amd](https://github.com/lemonade-sdk/whisper.cpp-amd) commit `bd9985c` | whisper.cpp di-build di komputer itu (beberapa menit) |
 | `models/ggml-large-v3-turbo-q5_0.bin` | 574 MB | Hugging Face `ggerganov/whisper.cpp` | Model transkripsi |
 | `models/ggml-silero-v5.1.2.bin` | 0,9 MB | Hugging Face `ggml-org/whisper-vad` | Model VAD (melewati hening) |
@@ -358,7 +358,6 @@ Pesan di bawahnya menyebutkan penyebab dan perbaikannya. Yang umum:
 - *Gagal mengunduh*: cek koneksi internet, lalu jalankan ulang.
 - *Tool berikut belum terpasang* / *Butuh python3-venv* (Linux selain Debian/Ubuntu): install paket yang disebutkan lewat package manager distro.
 - *Install Visual C++ Redistributable belum berhasil* (Windows): prompt administrator ditolak atau gagal. Install dari link yang ditampilkan, lalu jalankan ulang.
-- *Binary Windows 404*: rilis whisper.cpp Windows belum tersedia di GitHub (lihat [Untuk maintainer](#untuk-maintainer-binary-whisper-windows)).
 
 **Windows: `Python tidak ditemukan dan tidak bisa diinstall otomatis`**
 PC tidak punya `winget` (Windows lama) atau instalasinya gagal. Install Python dari python.org, centang *Add python.exe to PATH*, lalu jalankan ulang `start_app.bat`.
@@ -372,7 +371,7 @@ Pesan error menampilkan log whisper. Penyebab umum:
 - Driver Vulkan tidak ada: Linux `sudo apt install mesa-vulkan-drivers`; Windows update driver GPU. Aplikasi seharusnya otomatis pindah ke CPU.
 
 **Transkripsi lambat**
-Kemungkinan berjalan di CPU. Cek apakah GPU terbaca, misalnya di Linux:
+Kemungkinan berjalan di CPU. Di Windows, jika ada file `build-vulkan/bin/Release/CPU_ONLY.txt`, berarti yang terpasang whisper.cpp versi CPU karena build Vulkan belum tersedia saat setup. Cek apakah GPU terbaca, misalnya di Linux:
 ```bash
 build-linux/bin/whisper-cli -m models/ggml-large-v3-turbo-q5_0.bin -f contoh.wav -dev 1 2>&1 | grep -i vulkan
 ```
@@ -397,7 +396,7 @@ Hanya terjadi lewat API. Lihat nilai `language` di [API](#api).
 
 Bagian ini hanya untuk pemilik repository; pengguna biasa bisa melewatinya.
 
-Di Windows, setup otomatis mengunduh `whisper-cli.exe` siap pakai dari GitHub Release, karena build whisper.cpp di Windows butuh Visual Studio + Vulkan SDK. Siapkan sekali, dan ulangi setiap kali versi whisper.cpp berubah (dijalankan di Linux):
+Di Windows, setup otomatis mengunduh `whisper-cli.exe` siap pakai dari GitHub Release, karena build whisper.cpp di Windows butuh Visual Studio + Vulkan SDK. [Rilis resmi whisper.cpp](https://github.com/ggml-org/whisper.cpp/releases) tidak punya versi Vulkan untuk Windows (hanya CPU, CUDA, BLAS), jadi build Vulkan disediakan di sini. Tanpa rilis ini aplikasi tetap jalan di Windows memakai versi CPU resmi, hanya lebih lambat. Siapkan sekali, dan ulangi setiap kali versi whisper.cpp berubah (dijalankan di Linux):
 
 1. Jalankan `bash scripts/package.sh`. Hasilnya `dist/whisper-vulkan-windows-x64.zip` (±18 MB), berisi **hanya** `whisper-cli.exe` + DLL whisper.cpp/ggml (MIT) dan teks lisensinya. DLL runtime Microsoft sengaja tidak disertakan; pengguna menginstallnya sendiri dari Microsoft.
 2. Buat rilis di https://github.com/theCrudify/01.-Audio-Transcrypt/releases/new dengan tag **`whisper-vulkan-bd9985c`**, upload zip tadi, lalu publish.
