@@ -41,7 +41,7 @@ Starting app on http://127.0.0.1:8000
 2. Clone repository (atau *Code → Download ZIP* di GitHub lalu ekstrak).
 3. Double-click `scripts\start_app.bat`.
 
-Run pertama ±2–5 menit: install library Python, unduh whisper.cpp siap pakai dan model. Windows tidak perlu Visual Studio atau tool build. Model juga [terunduh otomatis](#model-terunduh-otomatis).
+Run pertama ±2–5 menit: menginstall library Python, menyiapkan whisper.cpp (unduh di Windows, build di Linux) dan mengunduh model. Windows tidak perlu Visual Studio atau tool build. Model juga [terunduh otomatis](#model-terunduh-otomatis).
 
 ### Setelah itu
 
@@ -53,26 +53,24 @@ Buka http://127.0.0.1:8000, tunggu badge **Siap**, lalu upload file. Hentikan de
 | whisper.cpp | Diunduh siap pakai dari [GitHub Release](https://github.com/theCrudify/01.-Audio-Transcrypt/releases) | Di-build di komputer itu (cocok dengan versi sistem) |
 | Model, library Python, aplikasi | Sama | Sama |
 
-Tidak mau install Python? Pakai [paket siap pakai](#cara-1--paket-siap-pakai-tanpa-install). Setup gagal? Lihat [Troubleshooting](#troubleshooting).
+Setup gagal? Lihat [Troubleshooting](#troubleshooting).
 
 ## Daftar isi
 
 1. [Fitur](#fitur)
-2. [Pilih cara pakai](#pilih-cara-pakai)
-3. [Cara 1 — Paket siap pakai (tanpa install)](#cara-1--paket-siap-pakai-tanpa-install)
-4. [Cara 2 — Dari source code](#cara-2--dari-source-code)
-5. [Mode server (dipakai bersama)](#mode-server-dipakai-bersama)
-6. [Menggunakan aplikasi](#menggunakan-aplikasi)
-7. [GPU yang didukung](#gpu-yang-didukung)
-8. [Model & kualitas transkripsi](#model--kualitas-transkripsi)
-9. [Konfigurasi (environment variable)](#konfigurasi-environment-variable)
-10. [Speaker diarization (bedakan pembicara)](#speaker-diarization-bedakan-pembicara)
-11. [Membuat paket siap pakai](#membuat-paket-siap-pakai)
-12. [API](#api)
-13. [Struktur project](#struktur-project)
-14. [Cakupan & batasan](#cakupan--batasan)
-15. [Lisensi & atribusi](#lisensi--atribusi)
-16. [Troubleshooting](#troubleshooting)
+2. [Instalasi](#instalasi)
+3. [Mode server (dipakai bersama)](#mode-server-dipakai-bersama)
+4. [Menggunakan aplikasi](#menggunakan-aplikasi)
+5. [GPU yang didukung](#gpu-yang-didukung)
+6. [Model & kualitas transkripsi](#model--kualitas-transkripsi)
+7. [Konfigurasi (environment variable)](#konfigurasi-environment-variable)
+8. [Speaker diarization (bedakan pembicara)](#speaker-diarization-bedakan-pembicara)
+9. [Binary whisper untuk Windows (maintainer)](#binary-whisper-untuk-windows-maintainer)
+10. [API](#api)
+11. [Struktur project](#struktur-project)
+12. [Cakupan & batasan](#cakupan--batasan)
+13. [Lisensi & atribusi](#lisensi--atribusi)
+14. [Troubleshooting](#troubleshooting)
 
 ## Fitur
 
@@ -91,50 +89,7 @@ Tidak mau install Python? Pakai [paket siap pakai](#cara-1--paket-siap-pakai-tan
 
 Sebelum dipakai untuk catatan penting, baca [Cakupan & batasan](#cakupan--batasan).
 
-## Pilih cara pakai
-
-| Kebutuhan | Cara |
-|---|---|
-| Pakai saja, tanpa install Python / apa pun | [Cara 1 — Paket siap pakai](#cara-1--paket-siap-pakai-tanpa-install) |
-| Mengembangkan / mengubah kode | [Cara 2 — Dari source code](#cara-2--dari-source-code) |
-| Satu komputer dipakai banyak orang lewat browser | [Mode server](#mode-server-dipakai-bersama) (bisa digabung dengan Cara 1 atau 2) |
-
-## Cara 1 — Paket siap pakai (tanpa install)
-
-Paket sudah berisi Python, semua library, whisper.cpp, dan model. **Tidak perlu Anaconda, Python, atau pip.**
-
-### Unduh paketnya
-
-Paket ada di halaman **[Releases](https://github.com/theCrudify/01.-Audio-Transcrypt/releases/latest)**, bagian *Assets*:
-
-| File | Untuk | Ukuran |
-|---|---|---|
-| `AudioTranscrypt-windows.zip` | Windows 10/11 64-bit | ±700 MB |
-| `AudioTranscrypt-linux.tar.gz` | Linux x86-64 (glibc 2.38+) | ±720 MB |
-
-> Tombol hijau **Code → Download ZIP** di halaman utama repository **bukan** paket ini. Isinya hanya source code (±200 KB). Untuk itu, ikuti [Cara 2](#cara-2--dari-source-code).
-
-### Windows
-
-1. Ekstrak `AudioTranscrypt-windows.zip` (misalnya ke `C:\AudioTranscrypt`).
-2. Double-click `start.bat`.
-3. Buka alamat yang muncul di jendela terminal, biasanya http://127.0.0.1:8000.
-
-Jangan tutup jendela terminal selama aplikasi dipakai.
-
-### Linux
-
-```bash
-tar -xzf AudioTranscrypt-linux.tar.gz
-cd AudioTranscrypt-linux
-./start.sh
-```
-
-Lalu buka http://127.0.0.1:8000.
-
-Syarat Linux: glibc 2.38+ (Ubuntu 24.04+, Debian 13+, Fedora 39+) dan driver Vulkan Mesa (`mesa-vulkan-drivers`, biasanya sudah terpasang). Tanpa driver Vulkan, aplikasi tetap jalan memakai CPU (lebih lambat).
-
-## Cara 2 — Dari source code
+## Instalasi
 
 ### Prasyarat (install manual sekali)
 
@@ -203,17 +158,15 @@ Output terakhir `app.verify` harus `Ready to run (Vulkan GPU, CPU fallback).`
 Jalankan di satu komputer, orang lain cukup membuka browser — mereka tidak perlu download apa pun.
 
 ```bash
-# Linux (source)
+# Linux
 HOST=0.0.0.0 APP_RELOAD=0 bash scripts/start_app.sh
-# Linux (paket)
-HOST=0.0.0.0 ./start.sh
 ```
 
 ```bat
-:: Windows (source atau paket)
+:: Windows
 set HOST=0.0.0.0
 set APP_RELOAD=0
-scripts\start_app.bat        :: atau start.bat di paket
+scripts\start_app.bat
 ```
 
 Pengguna lain membuka `http://<IP-server>:8000` (cek IP dengan `hostname -I` di Linux atau `ipconfig` di Windows). Izinkan port 8000 di firewall jika perlu.
@@ -300,7 +253,7 @@ Tips hasil terbaik: pilih bahasa secara eksplisit, gunakan rekaman yang jelas (m
 |---|---|---|
 | `HOST` | `127.0.0.1` | `0.0.0.0` agar bisa diakses dari jaringan |
 | `PORT` | `8000` | Jika terpakai, otomatis mencari port berikutnya |
-| `APP_RELOAD` | `1` (`0` di paket) | Auto-restart saat kode berubah; set `0` untuk server |
+| `APP_RELOAD` | `1` | Auto-restart saat kode berubah; set `0` untuk server |
 | `WHISPER_MODEL` | `large-v3-turbo-q5_0` jika ada, selain itu `small` | Nama model → `models/ggml-<nama>.bin` |
 | `WHISPER_MODEL_PATH` | dari `WHISPER_MODEL` | Path lengkap file model |
 | `WHISPER_VAD_MODEL_PATH` | `models/ggml-silero-v5.1.2.bin` | Model VAD |
@@ -357,43 +310,15 @@ Model PyAnnote resmi di Hugging Face mewajibkan login. sherpa-onnx membagikan ve
 - **Label anonim**, bukan nama asli. Nomor diberikan sesuai urutan orang pertama kali bicara.
 - Benchmark memakai rekaman bacaan bahasa Inggris yang bersih. Rekaman diskusi atau kelas (mikrofon jauh, gema, saling potong) umumnya lebih sulit.
 
-## Membuat paket siap pakai
+## Binary whisper untuk Windows (maintainer)
 
-Dijalankan di Linux, menghasilkan paket untuk kedua OS:
+Di Windows, [setup otomatis](#setup-otomatis-saat-pertama-dijalankan) mengunduh `whisper-cli.exe` siap pakai dari GitHub Release project ini, karena build whisper.cpp di Windows butuh Visual Studio + Vulkan SDK. Cara menyiapkannya (sekali, dan setiap kali versi whisper.cpp berubah), dijalankan di Linux:
 
-```bash
-bash scripts/build_whisper.sh     # sekali, untuk binary Linux
-bash scripts/package.sh           # atau: linux | windows
-```
+1. `bash scripts/package.sh windows`. Hasilnya `dist/whisper-vulkan-windows-x64.zip` (±19 MB) berisi `whisper-cli.exe`, DLL, runtime Visual C++, dan lisensi whisper.cpp. Perintah ini juga membuat bundel offline di `dist/` untuk keperluan sendiri; bundel itu tidak dibagikan.
+2. Buat rilis di https://github.com/theCrudify/01.-Audio-Transcrypt/releases/new dengan tag **`whisper-vulkan-bd9985c`**, upload zip tadi, lalu publish.
+3. Zip dibuat ulang setiap perintah di atas dijalankan, sehingga sha256-nya berubah. Pastikan `WINDOWS_BINARY_SHA256` di `app/bootstrap.py` sama dengan nilai yang dicetak untuk file yang **di-upload**.
 
-Hasil di `dist/`:
-
-| File | Isi |
-|---|---|
-| `AudioTranscrypt-windows.zip` (~650 MB) | Python 3.12 portable, library Windows, `whisper-cli.exe` + runtime Visual C++, model turbo + VAD + model pembicara, `start.bat` |
-| `AudioTranscrypt-linux.tar.gz` (~670 MB) | Python 3.12 portable, library Linux, `whisper-cli` Vulkan, model turbo + VAD + model pembicara, `start.sh` |
-
-Syarat: semua model sudah ada di `models/` (jalankan `python3 -m app.bootstrap` dulu), plus `curl`, `zip`, dan `unzip`.
-
-Target `windows` juga menghasilkan `dist/whisper-vulkan-windows-x64.zip` (±19 MB): binary whisper Windows yang diunduh oleh [setup otomatis](#setup-otomatis-saat-pertama-dijalankan).
-
-Paket berisi **salinan** `app/` dan `static/` saat dibuat. Setiap ada perubahan kode, jalankan ulang `package.sh`, karena paket lama tidak ikut ter-update.
-
-### Merilis di GitHub Releases (maintainer)
-
-File paket terlalu besar untuk repository, jadi dibagikan lewat **GitHub Releases** (maksimal 2 GB per file). Ada dua rilis:
-
-**1. Paket siap pakai** (untuk [Cara 1](#cara-1--paket-siap-pakai-tanpa-install)), dibuat ulang setiap ada versi baru:
-1. Jalankan `bash scripts/package.sh`.
-2. Buka https://github.com/theCrudify/01.-Audio-Transcrypt/releases/new, buat tag versi (misalnya **`v1.0.0`**), isi judul dan catatan perubahan.
-3. Upload `dist/AudioTranscrypt-windows.zip` dan `dist/AudioTranscrypt-linux.tar.gz` sebagai *assets*, lalu **Publish release**.
-
-**2. Binary whisper Windows** (untuk [setup otomatis](#setup-otomatis-saat-pertama-dijalankan) di Windows), cukup sekali dan setiap kali binary whisper berubah:
-1. Buat rilis dengan tag **`whisper-vulkan-bd9985c`**.
-2. Upload `dist/whisper-vulkan-windows-x64.zip`, lalu publish.
-3. Zip ini dibuat ulang setiap `package.sh` dijalankan, sehingga sha256-nya berubah. Setelah upload, pastikan `WINDOWS_BINARY_SHA256` di `app/bootstrap.py` sama dengan nilai yang dicetak `package.sh` untuk file yang **di-upload**.
-
-Repository harus **public**. Dari repo private, unduhan tanpa login gagal (404). Tanpa rilis kedua, setup di Windows berhenti dengan pesan untuk menyalin folder `build-vulkan\` dari paket siap pakai. Lokasi lain bisa dipakai lewat env `WHISPER_WINDOWS_URL` + `WHISPER_WINDOWS_SHA256`.
+Repository harus **public**; dari repo private, unduhan tanpa login gagal (404). Lokasi lain bisa dipakai lewat env `WHISPER_WINDOWS_URL` + `WHISPER_WINDOWS_SHA256`.
 
 ## API
 
@@ -429,7 +354,7 @@ scripts/
   start_app.bat      Launcher Windows (menjalankan setup otomatis dulu)
   start_app.sh       Launcher Linux / Git Bash (menjalankan setup otomatis dulu)
   build_whisper.sh   Build whisper.cpp Vulkan untuk Linux
-  package.sh         Membuat paket siap pakai di dist/ (beserta teks lisensi pihak ketiga)
+  package.sh         Membuat binary whisper Windows (dan bundel offline) di dist/
 build-vulkan/        whisper.cpp prebuilt Windows   (tidak di-commit)
 build-linux/         whisper.cpp build Linux         (tidak di-commit)
 models/              Model whisper & VAD             (tidak di-commit)
@@ -484,13 +409,13 @@ Bagian ini menjelaskan apa yang memang ditangani aplikasi, apa yang tidak, dan b
 | Rekam mikrofon | Hanya bisa di `localhost`/`127.0.0.1` atau HTTPS (aturan browser). | Pengguna mode server lewat `http://<IP>` bisa mengunggah file rekaman. |
 | Bahasa pesan error | Pesan error dari server selalu berbahasa Indonesia, walau UI diset ke EN. | – |
 | Bedakan pembicara | Jumlah pembicara *Otomatis* bisa meleset (sensitif); berjalan di CPU (±8 menit per jam audio); suara tumpang tindih/mirip bisa tertukar. | Isi *Jumlah pembicara* jika diketahui. Lihat [Speaker diarization](#speaker-diarization-bedakan-pembicara). |
-| Setup pertama | Butuh internet dan ±600 MB unduhan. Linux butuh tool build (git, cmake, compiler, glslc); Windows butuh rilis binary di GitHub Release. | Setelah itu aplikasi berjalan offline. Alternatif tanpa setup: paket siap pakai. |
-| Paket siap pakai | Berisi salinan kode saat paket dibuat. | Jalankan ulang `scripts/package.sh` setelah kode berubah. |
+| Setup pertama | Butuh internet dan ±600 MB unduhan. Linux butuh tool build (git, cmake, compiler, glslc); Windows butuh rilis binary di GitHub Release. | Setelah itu aplikasi berjalan offline. |
+
 
 ## Lisensi & atribusi
 
 - Kode project ini berlisensi **MIT** (lihat [LICENSE](LICENSE)): boleh dipakai, diubah, dan dibagikan, termasuk untuk keperluan komersial, asal pemberitahuan hak cipta dan lisensinya tetap disertakan.
-- Komponen pihak ketiga (model AI, whisper.cpp, sherpa-onnx, library Python) beserta lisensinya tercantum di [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Semuanya MIT, Apache-2.0, atau BSD, sehingga boleh dipakai termasuk untuk keperluan komersial, dengan syarat atribusi dan teks lisensinya disertakan saat disebarkan ulang. `package.sh` otomatis menyertakannya di paket portable.
+- Komponen pihak ketiga (model AI, whisper.cpp, sherpa-onnx, library Python) beserta lisensinya tercantum di [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Semuanya MIT, Apache-2.0, atau BSD, sehingga boleh dipakai termasuk untuk keperluan komersial, dengan syarat atribusi dan teks lisensinya disertakan saat disebarkan ulang.
 - Merekam kelas, seminar, atau diskusi berarti memproses data pribadi (suara orang lain). Minta izin pembicara dan peserta sebelum merekam, jelaskan tujuannya, dan hapus rekaman setelah tidak diperlukan. Di Indonesia, ini sejalan dengan UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi. Aplikasi ini menghapus file upload dan WAV sementara setelah diproses, dan tidak menyimpan hasil transkrip di server.
 - Jika transkrip diolah lagi di layanan lain (misalnya chatbot AI untuk merangkum), teksnya ikut keluar dari komputer. Pastikan penyelenggara dan pembicara mengizinkannya, terutama untuk materi tertutup seperti pelatihan berbayar.
 
@@ -501,7 +426,7 @@ Pesan di bawahnya menyebutkan penyebab dan perbaikannya. Yang umum:
 - *Gagal mengunduh*: cek koneksi internet, lalu jalankan ulang (unduhan yang terputus tidak dipakai).
 - *Tool berikut belum terpasang* (Linux): jalankan perintah `sudo apt install ...` yang ditampilkan.
 - *Butuh python3-venv* (Linux): `sudo apt install python3-venv`.
-- *Binary Windows 404*: rilis GitHub belum dibuat atau repo masih private (lihat [Merilis di GitHub Releases](#merilis-di-github-releases-maintainer)). Sementara itu, salin folder `build-vulkan\` dari paket siap pakai.
+- *Binary Windows 404*: rilis GitHub belum dibuat atau repo masih private (lihat [Binary whisper untuk Windows](#binary-whisper-untuk-windows-maintainer)).
 
 **Status tidak pernah "Siap" / `503 Service Unavailable`**
 Jalankan `.venv/bin/python -m app.verify` (Windows: `.venv\Scripts\python -m app.verify`) untuk melihat file mana yang hilang (binary whisper atau model).
@@ -524,11 +449,8 @@ build-linux/bin/whisper-cli -m models/ggml-large-v3-turbo-q5_0.bin -f contoh.wav
 ```
 Baris `using Vulkan1 backend` berarti GPU dipakai. Jika tidak ada, cek driver Vulkan dan `WHISPER_GPU_DEVICE`.
 
-**Linux: `GLIBC_2.38 not found` saat memakai paket**
-Distro terlalu lama untuk paket Linux; jalankan dari source (Cara 2) agar whisper.cpp di-build di mesin itu.
-
 **Windows: `python` tidak dikenali**
-Install Python dari python.org dan centang *Add python.exe to PATH*, atau pakai paket siap pakai yang tidak butuh Python.
+Install Python dari python.org dan centang *Add python.exe to PATH*, lalu buka ulang jendela terminal.
 
 **Port 8000 sudah dipakai**
 Aplikasi otomatis memakai port berikutnya (8001, 8002, …); lihat alamat yang dicetak di terminal.

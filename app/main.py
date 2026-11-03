@@ -251,5 +251,5 @@ if __name__ == "__main__":
         raise SystemExit(1) from exc
 
     print(f"Starting app on http://{HOST}:{port}")
-    # HOST=0.0.0.0 agar bisa diakses dari jaringan; APP_RELOAD=0 untuk server/paket portable.
+    # HOST=0.0.0.0 agar bisa diakses dari jaringan; APP_RELOAD=0 untuk mode server.
     uvicorn.run("app.main:app", host=HOST, port=port, reload=os.getenv("APP_RELOAD", "1") == "1")

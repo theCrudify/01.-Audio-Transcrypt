@@ -9,8 +9,7 @@ if not defined PY where python >nul 2>&1 && set "PY=python"
 if not defined PY where py >nul 2>&1 && set "PY=py -3"
 if not defined PY (
     echo Python tidak ditemukan.
-    echo Install Python 3.10+ dari https://www.python.org/downloads/ ^(centang "Add python.exe to PATH"^),
-    echo atau pakai paket portable AudioTranscrypt-windows.zip yang tidak butuh Python.
+    echo Install Python 3.10+ dari https://www.python.org/downloads/ ^(centang "Add python.exe to PATH"^).
     pause
     exit /b 1
 )

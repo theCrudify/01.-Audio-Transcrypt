@@ -2,7 +2,7 @@
 
 Kode project ini sendiri berlisensi MIT (lihat [LICENSE](LICENSE)). Komponen di bawah ini milik pembuatnya masing-masing.
 
-Aplikasi ini merangkai komponen open-source buatan pihak lain. Repository ini **tidak** menyimpan model atau binary mereka; semuanya diunduh dari sumber resminya saat [setup otomatis](README.md#setup-otomatis-saat-pertama-dijalankan), dan tunduk pada lisensinya masing-masing. Paket portable (`scripts/package.sh`) **menyebarkan ulang** sebagian komponen ini, sehingga file ini dan teks lisensinya ikut disertakan di dalam paket.
+Aplikasi ini merangkai komponen open-source buatan pihak lain. Repository ini **tidak** menyimpan model atau binary mereka; semuanya diunduh dari sumber resminya saat [setup otomatis](README.md#setup-otomatis-saat-pertama-dijalankan), dan tunduk pada lisensinya masing-masing. Satu-satunya yang disebarkan ulang adalah zip binary whisper.cpp untuk Windows di GitHub Release, dan teks lisensinya ikut disertakan di dalam zip itu.
 
 Terima kasih kepada semua pembuatnya.
 
@@ -25,15 +25,14 @@ Mengutip PyAnnote (diminta oleh pembuatnya bila dipakai dalam publikasi):
 
 | Komponen | Lisensi | Sumber | Catatan |
 |---|---|---|---|
-| whisper.cpp / ggml (fork `lemonade-sdk/whisper.cpp-amd`, commit `bd9985c`) | MIT | [lemonade-sdk/whisper.cpp-amd](https://github.com/lemonade-sdk/whisper.cpp-amd) | Di-build dari source (Linux) atau binary di GitHub Release (Windows). Teks lisensi: `LICENSE-whisper.cpp.txt` di paket |
+| whisper.cpp / ggml (fork `lemonade-sdk/whisper.cpp-amd`, commit `bd9985c`) | MIT | [lemonade-sdk/whisper.cpp-amd](https://github.com/lemonade-sdk/whisper.cpp-amd) | Di-build dari source (Linux) atau binary di GitHub Release (Windows). Teks lisensi: `LICENSE-whisper.cpp.txt` di dalam zip |
 | sherpa-onnx | Apache-2.0 | [k2-fsa/sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | Termasuk ONNX Runtime (MIT, Microsoft) |
 | FastAPI | MIT | [fastapi/fastapi](https://github.com/fastapi/fastapi) | |
 | Uvicorn | BSD-3-Clause | [encode/uvicorn](https://github.com/encode/uvicorn) | |
 | python-multipart | Apache-2.0 | [Kludex/python-multipart](https://github.com/Kludex/python-multipart) | |
 | NumPy | BSD-3-Clause (+ komponen 0BSD, MIT, Zlib, CC0) | [numpy/numpy](https://github.com/numpy/numpy) | |
-| PyAV | BSD-3-Clause | [PyAV-Org/PyAV](https://github.com/PyAV-Org/PyAV) | Wheel PyAV membawa **FFmpeg (LGPL-3.0+)** serta **libx264 & libx265 (GPL-2.0+)**. Aplikasi hanya memakai fungsi decode audio, tetapi paket portable ikut menyebarkan file library ini apa adanya. Source code-nya tersedia di [FFmpeg](https://ffmpeg.org/download.html), [x264](https://code.videolan.org/videolan/x264), [x265](https://bitbucket.org/multicoreware/x265_git) dan build script PyAV. Teks lisensi tiap library ada di folder `*.dist-info` paket Python di dalam paket portable. |
-| Python 3.12 portable (paket siap pakai) | PSF License | [astral-sh/python-build-standalone](https://github.com/astral-sh/python-build-standalone) | |
-| Runtime Microsoft Visual C++ (paket Windows) | Lisensi redistribusi Microsoft | wheel `msvc-runtime` | Disertakan agar `whisper-cli.exe` jalan tanpa installer |
+| PyAV | BSD-3-Clause | [PyAV-Org/PyAV](https://github.com/PyAV-Org/PyAV) | Wheel PyAV membawa **FFmpeg (LGPL-3.0+)** serta **libx264 & libx265 (GPL-2.0+)**. Aplikasi hanya memakai fungsi decode audio. Wheel ini diunduh `pip` dari PyPI saat setup; repository ini tidak menyebarkannya. Source code-nya tersedia di [FFmpeg](https://ffmpeg.org/download.html), [x264](https://code.videolan.org/videolan/x264), [x265](https://bitbucket.org/multicoreware/x265_git) dan build script PyAV. Teks lisensi tiap library ada di folder `*.dist-info` PyAV di dalam `.venv`. |
+| Runtime Microsoft Visual C++ (zip whisper Windows) | Lisensi redistribusi Microsoft | wheel `msvc-runtime` | Disertakan agar `whisper-cli.exe` jalan tanpa installer |
 
 ## Merek dagang
 
