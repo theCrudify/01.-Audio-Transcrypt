@@ -4,7 +4,7 @@ Aplikasi web untuk mengubah rekaman audio/video menjadi teks **sepenuhnya di kom
 
 ## Mulai cepat
 
-Cukup clone lalu jalankan **satu script**. Semua yang dibutuhkan disiapkan otomatis pada run pertama: Python (Windows), paket sistem (Linux), whisper.cpp, library Python, dan model AI. Detailnya di [Instalasi](#instalasi).
+Cukup clone lalu jalankan **satu script**. Pada run pertama, semua yang dibutuhkan diunduh dan diinstall otomatis: Python (Windows), paket sistem (Linux), whisper.cpp dengan GPU Vulkan, library Python, dan model AI. Setelah itu server aplikasi langsung berjalan dan siap dipakai lewat browser.
 
 **Linux (Debian/Ubuntu)**
 
@@ -14,15 +14,20 @@ cd 01.-Audio-Transcrypt
 bash scripts/start_app.sh
 ```
 
-Script akan meminta password `sudo` sekali untuk menginstall paket sistem yang belum ada.
+**Windows 10/11**
 
-**Windows**
-
-Clone repository ini (atau di GitHub pilih *Code → Download ZIP* lalu ekstrak), lalu double-click `scripts\start_app.bat`. Jika muncul prompt administrator untuk *Microsoft Visual C++ Redistributable*, klik **Yes**.
+Clone repository ini, atau di GitHub pilih *Code → Download ZIP* lalu ekstrak. Setelah itu double-click `scripts\start_app.bat`.
 
 **Lalu** buka http://127.0.0.1:8000, tunggu badge **Siap**, dan upload file. Hentikan server dengan `Ctrl+C`.
 
-Run pertama butuh internet dan beberapa menit untuk menyiapkan file (±650 MB). Run berikutnya langsung start dan tidak butuh internet. Jika ada yang gagal, lihat [Troubleshooting](#troubleshooting).
+| | Linux | Windows |
+|---|---|---|
+| Yang perlu dilakukan pengguna | Ketik password `sudo` sekali, jika ada paket sistem yang belum terpasang | Klik **Yes** di prompt administrator, jika *Microsoft Visual C++ Redistributable* belum terpasang. Jika muncul *Windows protected your PC*, klik **More info → Run anyway** |
+| Run pertama | ±4 menit, unduhan ±650 MB | Beberapa menit, unduhan ±650 MB |
+| Run berikutnya | Langsung start, tanpa internet | Sama |
+| Status pengujian | Sudah dites dari folder kosong sampai siap pakai | Semua unduhan sudah dicek bisa diakses tanpa login, tetapi alur lengkapnya **belum dites di PC Windows asli**. Jika ada kendala, buka [issue](https://github.com/theCrudify/01.-Audio-Transcrypt/issues) beserta pesan `[setup]`-nya |
+
+Detail apa saja yang disiapkan ada di [Instalasi](#instalasi). Jika ada yang gagal, lihat [Troubleshooting](#troubleshooting).
 
 ## Daftar isi
 
@@ -68,6 +73,8 @@ Satu-satunya syarat: **internet saat run pertama**. Prasyarat berikut diinstall 
 | Tool build whisper.cpp | Tidak perlu: whisper.cpp diunduh siap pakai | `git build-essential cmake libvulkan-dev glslc mesa-vulkan-drivers` lewat `apt` (minta password `sudo`) |
 | Microsoft Visual C++ Redistributable x64 | Installer resmi dari Microsoft (minta izin administrator) | Tidak perlu |
 
+**Tidak** diinstall otomatis: driver GPU. Driver bawaan Windows/Linux biasanya sudah cukup; tanpa driver Vulkan aplikasi tetap jalan di CPU, hanya lebih lambat.
+
 Install manual hanya perlu jika otomatisnya gagal, misalnya Windows tanpa `winget` (unduh Python dari [python.org](https://www.python.org/downloads/), centang *Add python.exe to PATH*) atau Linux selain Debian/Ubuntu (install padanan paket di atas lewat package manager distro).
 
 ### Yang disiapkan otomatis
@@ -77,7 +84,7 @@ Install manual hanya perlu jika otomatisnya gagal, misalnya Windows tanpa `winge
 | File / folder | Ukuran | Sumber | Fungsi |
 |---|---|---|---|
 | `.venv/` | ±270 MB | PyPI (`requirements/base.txt`) | Library Python. Diinstall ulang otomatis jika `requirements/base.txt` berubah |
-| `build-vulkan/` (Windows) | 18 MB | [GitHub Release project ini](https://github.com/theCrudify/01.-Audio-Transcrypt/releases) | whisper.cpp siap pakai dengan GPU Vulkan. Jika rilis ini tidak tersedia, dipakai [whisper.cpp resmi](https://github.com/ggml-org/whisper.cpp/releases) versi CPU (9 MB, lebih lambat) dan setup mencoba versi GPU lagi di run berikutnya |
+| `build-vulkan/` (Windows) | 18 MB | [GitHub Release project ini](https://github.com/theCrudify/01.-Audio-Transcrypt/releases/tag/whisper-vulkan-bd9985c) | whisper.cpp siap pakai dengan GPU Vulkan. Jika rilis ini tidak tersedia, dipakai [whisper.cpp resmi](https://github.com/ggml-org/whisper.cpp/releases) versi CPU (9 MB, lebih lambat) dan setup mencoba versi GPU lagi di run berikutnya |
 | `build-linux/` (Linux) | – | Source [whisper.cpp-amd](https://github.com/lemonade-sdk/whisper.cpp-amd) commit `bd9985c` | whisper.cpp di-build di komputer itu (beberapa menit) |
 | `models/ggml-large-v3-turbo-q5_0.bin` | 574 MB | Hugging Face `ggerganov/whisper.cpp` | Model transkripsi |
 | `models/ggml-silero-v5.1.2.bin` | 0,9 MB | Hugging Face `ggml-org/whisper-vad` | Model VAD (melewati hening) |
@@ -359,6 +366,9 @@ Pesan di bawahnya menyebutkan penyebab dan perbaikannya. Yang umum:
 - *Tool berikut belum terpasang* / *Butuh python3-venv* (Linux selain Debian/Ubuntu): install paket yang disebutkan lewat package manager distro.
 - *Install Visual C++ Redistributable belum berhasil* (Windows): prompt administrator ditolak atau gagal. Install dari link yang ditampilkan, lalu jalankan ulang.
 
+**Windows: muncul *Windows protected your PC* atau antivirus memblokir file**
+Windows memperingatkan script dan program yang diunduh dari internet tanpa tanda tangan digital. Klik **More info → Run anyway**. Jika Windows Defender mengkarantina `whisper-cli.exe`, pulihkan file itu, atau hapus folder `build-vulkan\` lalu jalankan ulang `start_app.bat`.
+
 **Windows: `Python tidak ditemukan dan tidak bisa diinstall otomatis`**
 PC tidak punya `winget` (Windows lama) atau instalasinya gagal. Install Python dari python.org, centang *Add python.exe to PATH*, lalu jalankan ulang `start_app.bat`.
 
@@ -396,10 +406,12 @@ Hanya terjadi lewat API. Lihat nilai `language` di [API](#api).
 
 Bagian ini hanya untuk pemilik repository; pengguna biasa bisa melewatinya.
 
-Di Windows, setup otomatis mengunduh `whisper-cli.exe` siap pakai dari GitHub Release, karena build whisper.cpp di Windows butuh Visual Studio + Vulkan SDK. [Rilis resmi whisper.cpp](https://github.com/ggml-org/whisper.cpp/releases) tidak punya versi Vulkan untuk Windows (hanya CPU, CUDA, BLAS), jadi build Vulkan disediakan di sini. Tanpa rilis ini aplikasi tetap jalan di Windows memakai versi CPU resmi, hanya lebih lambat. Siapkan sekali, dan ulangi setiap kali versi whisper.cpp berubah (dijalankan di Linux):
+Di Windows, setup otomatis mengunduh `whisper-cli.exe` siap pakai dari rilis [`whisper-vulkan-bd9985c`](https://github.com/theCrudify/01.-Audio-Transcrypt/releases/tag/whisper-vulkan-bd9985c), karena build whisper.cpp di Windows butuh Visual Studio + Vulkan SDK. [Rilis resmi whisper.cpp](https://github.com/ggml-org/whisper.cpp/releases) tidak punya versi Vulkan untuk Windows (hanya CPU, CUDA, BLAS). Jika rilis di project ini tidak bisa diakses, Windows otomatis memakai versi CPU resmi, hanya lebih lambat.
 
-1. Jalankan `bash scripts/package.sh`. Hasilnya `dist/whisper-vulkan-windows-x64.zip` (±18 MB), berisi **hanya** `whisper-cli.exe` + DLL whisper.cpp/ggml (MIT) dan teks lisensinya. DLL runtime Microsoft sengaja tidak disertakan; pengguna menginstallnya sendiri dari Microsoft.
-2. Buat rilis di https://github.com/theCrudify/01.-Audio-Transcrypt/releases/new dengan tag **`whisper-vulkan-bd9985c`**, upload zip tadi, lalu publish.
-3. sha256 zip berubah setiap kali dibuat ulang. Pastikan `WINDOWS_BINARY_SHA256` di `app/bootstrap.py` sama dengan sha256 file yang **di-upload**.
+Rilis ini **sudah tersedia**. Langkah di bawah hanya perlu diulang jika versi whisper.cpp diganti (dijalankan di Linux):
+
+1. Jalankan `bash scripts/package.sh`. Hasilnya `dist/whisper-vulkan-windows-x64.zip` (±18 MB), berisi **hanya** `whisper-cli.exe` + DLL whisper.cpp/ggml (MIT) dan teks lisensinya. DLL runtime Microsoft sengaja tidak disertakan; setup menginstallnya dari Microsoft.
+2. Upload ke rilis dengan tag baru yang sesuai commit whisper.cpp, misalnya `gh release create whisper-vulkan-<commit> dist/whisper-vulkan-windows-x64.zip`.
+3. Perbarui `WINDOWS_BINARY_URL` dan `WINDOWS_BINARY_SHA256` di `app/bootstrap.py` sesuai file yang **di-upload** (sha256 berubah setiap kali zip dibuat ulang). Jangan menimpa zip di rilis lama, karena pengguna versi lama masih memakai sha256 lama.
 
 Repository harus **public**, karena unduhan dari repo private tanpa login gagal (404).
