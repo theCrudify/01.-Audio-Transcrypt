@@ -400,7 +400,7 @@ Pastikan `models/ggml-silero-v5.1.2.bin` ada dan opsi VAD dicentang.
 Aplikasi otomatis memakai port berikutnya (8001, 8002, …); lihat alamat yang dicetak di terminal.
 
 **Tampilan aneh, fitur baru tidak muncul, atau error `Beam size harus berada di antara 1 dan 8`**
-Browser masih memakai halaman lama. Refresh dengan `Ctrl+F5`.
+Browser masih memakai cache halaman lama. Lakukan hard refresh dengan `Ctrl+F5` (atau `Ctrl+Shift+R` / `Shift+Reload`).
 
 **`Kode bahasa tidak dikenal`**
 Hanya terjadi lewat API. Lihat nilai `language` di [API](#api).
